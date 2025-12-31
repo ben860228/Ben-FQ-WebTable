@@ -1,98 +1,175 @@
 'use client';
 
 import { Asset } from '@/lib/types';
-import { getLivePrice, CATEGORY_MAPPING } from '@/lib/mockData';
 import { useMemo } from 'react';
+import { useLivePrices } from '@/hooks/useLivePrices';
+import { ResponsiveContainer, Treemap, Tooltip } from 'recharts';
 
 interface AssetTreemapContentProps {
     assets: Asset[];
     categoryMap?: Record<string, string>;
 }
 
-export default function AssetTreemapContent({ assets, categoryMap = {} }: AssetTreemapContentProps) {
-    const processedData = useMemo(() => {
-        let totalValue = 0;
-        const items = assets.map(asset => {
-            let val = (asset.Quantity || 0) * getLivePrice(asset.Name, asset.Currency);
+// Custom Tree Map Content
+const CustomizedContent = (props: any) => {
+    const { x, y, width, height, name, payload } = props;
 
-            // Hack for currency conversion if not handled in getLivePrice
+    // 1. Hide Root Node (It usually covers the whole area)
+    if (name === 'Root') return null;
+
+    // 2. Safety Check
+    if (!width || !height) return null;
+
+    // 3. Get Data
+    const change = payload?.change || 0;
+    const isUp = change > 0;
+    const isZero = change === 0;
+
+    // 4. Color Logic
+    // Up: Green (#10b981), Down: Red (#f43f5e), Zero: Gray (#64748b)
+    const fillColor = isZero ? '#64748b' : (isUp ? '#10b981' : '#f43f5e');
+
+    // 5. Render
+    return (
+        <g>
+            <rect
+                x={x}
+                y={y}
+                width={width}
+                height={height}
+                fill={fillColor}
+                stroke="#ffffff"
+                strokeWidth={2}
+            />
+            {/* Show Name if space allows */}
+            {width > 30 && height > 20 && (
+                <text
+                    x={x + width / 2}
+                    y={y + height / 2}
+                    textAnchor="middle"
+                    fill="#fff"
+                    fontSize={12}
+                    fontWeight="bold"
+                    dy={-6}
+                    style={{ pointerEvents: 'none' }}
+                >
+                    {name}
+                </text>
+            )}
+            {/* Show Change % if space allows */}
+            {width > 30 && height > 34 && (
+                <text
+                    x={x + width / 2}
+                    y={y + height / 2}
+                    textAnchor="middle"
+                    fill="#rgba(255,255,255,0.9)"
+                    fontSize={10}
+                    dy={8}
+                    style={{ pointerEvents: 'none' }}
+                >
+                    {change > 0 ? '+' : ''}{change.toFixed(1)}%
+                </text>
+            )}
+        </g>
+    );
+};
+
+export default function AssetTreemapContent({ assets, categoryMap = {} }: AssetTreemapContentProps) {
+    const { prices, getPrice } = useLivePrices(assets);
+
+    const data = useMemo(() => {
+        const leafNodes = assets.map(asset => {
+            let val = (asset.Quantity || 0) * getPrice(asset.Name, asset.Currency);
+
+            // Hack for currency
             if (asset.Currency === 'USD') val *= 32.5;
             if (asset.Currency === 'JPY') val *= 0.22;
 
-            if (val <= 0) val = 1000; // Force visibility
-            totalValue += val;
+            // Ensure positive value for Treemap area
+            if (val <= 0) val = 1;
 
-            // Color logic
-            let color = '#64748b'; // slate-500
-            const cat = asset.Category || 'Uncategorized';
-            if (cat === 'Crypto') color = '#F59E0B';
-            else if (cat === 'Stock') color = '#3B82F6';
-            else if (cat === 'ETF') color = '#6366F1';
-            else if (cat === 'Fiat' || cat === 'Cash') color = '#10B981';
-            else if (cat === 'Invest' || cat === 'Savings') color = '#8B5CF6';
+            const liveData = prices[asset.Name];
+            return {
+                name: asset.Name,
+                value: val,
+                change: liveData?.changePercent,
+                Category: asset.Category
+            };
+        }).sort((a, b) => b.value - a.value);
 
-            // Use Dynamic Map
-            const translatedCat = categoryMap[cat] || cat;
+        // Wrap in Root for Recharts 2.x+ correctness
+        return [{
+            name: 'Root',
+            children: leafNodes
+        }];
+    }, [assets, prices, getPrice]);
 
-            return { ...asset, val, color, translatedCat };
-        }).sort((a, b) => b.val - a.val);
+    // Check if we have leaf nodes
+    const hasData = data && data.length > 0 && data[0].children && data[0].children.length > 0;
+    // Extract first few items for debug
+    const debugItems = hasData ? data[0].children.slice(0, 3) : [];
 
-        return { items, totalValue };
-    }, [assets, categoryMap]);
+    const CustomTooltip = ({ active, payload }: any) => {
+        if (active && payload && payload.length) {
+            const data = payload[0].payload;
+            // Don't show tooltip for Root
+            if (data.name === 'Root') return null;
 
-    if (processedData.items.length === 0) {
-        return (
-            <div className="glass-card rounded-[2rem] p-8 h-full flex flex-col border border-slate-800 bg-slate-950 items-center justify-center">
-                <p className="text-slate-500">No Assets Found</p>
-            </div>
-        );
-    }
+            return (
+                <div className="bg-slate-900 border border-slate-700 p-2 rounded shadow-xl text-xs z-50">
+                    <p className="font-bold text-white mb-1">{data.name}</p>
+                    <p className="text-slate-400">Value: <span className="text-slate-200">${Math.round(data.value).toLocaleString()}</span></p>
+                    {data.change !== undefined && (
+                        <p className={`${data.change >= 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                            Change: {data.change > 0 ? '+' : ''}{data.change.toFixed(2)}%
+                        </p>
+                    )}
+                </div>
+            );
+        }
+        return null;
+    };
 
     return (
-        <div className="glass-card rounded-[2rem] p-8 h-full flex flex-col border border-slate-800 bg-slate-950">
-            <div className="mb-4">
-                <h3 className="text-sm font-medium text-slate-400">投資板塊 (Portfolio Map)</h3>
-                <p className="text-2xl font-bold text-white mt-1">資產分佈</p>
+        <div className="glass-card rounded-[2rem] p-8 h-full flex flex-col border border-slate-800 bg-slate-950 relative">
+            <div className="mb-4 flex justify-between items-end">
+                <div>
+                    <h3 className="text-sm font-medium text-slate-400">投資板塊 (Portfolio Map)</h3>
+                    <p className="text-2xl font-bold text-white mt-1">資產熱力圖</p>
+                </div>
+                <div className="flex gap-2 text-[10px]">
+                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded bg-emerald-500"></div><span className="text-slate-400">漲 (Up)</span></div>
+                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded bg-rose-500"></div><span className="text-slate-400">跌 (Down)</span></div>
+                </div>
             </div>
-            <div className="flex-1 w-full min-h-0 flex flex-wrap content-start gap-1 overflow-hidden relative rounded-xl bg-slate-900/50 p-1">
-                {processedData.items.map((item) => {
-                    const percent = (item.val / processedData.totalValue) * 100;
-                    // Min width checking
-                    const widthStyle = `${percent}%`;
-                    const isTooSmall = percent < 5;
 
-                    return (
-                        <div
-                            key={item.ID}
-                            style={{ width: widthStyle, backgroundColor: item.color }}
-                            className={`h-full min-h-[40px] flex-grow relative group transition-all hover:brightness-110 flex items-center justify-center border border-slate-950 box-border rounded-sm ${percent < 1 ? 'min-w-[1%]' : ''}`}
-                            title={`${item.Name}: $${Math.round(item.val).toLocaleString()}`}
-                        >
-                            <div className="opacity-0 group-hover:opacity-100 absolute inset-0 bg-black/20 z-10" />
-                            {!isTooSmall && (
-                                <div className="z-20 text-center px-1 overflow-hidden">
-                                    <div className="text-[10px] md:text-xs font-bold text-white truncate drop-shadow-md">{item.Name}</div>
-                                    <div className="text-[9px] text-white/80 font-mono hidden md:block">{percent.toFixed(1)}%</div>
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
-            {/* Legend */}
-            <div className="mt-4 flex flex-wrap gap-3">
-                {[
-                    { l: '股票 (Stock)', c: '#3B82F6' },
-                    { l: '加密貨幣 (Crypto)', c: '#F59E0B' },
-                    { l: '現金 (Cash)', c: '#10B981' },
-                    { l: 'ETF', c: '#6366F1' }
-                ].map(i => (
-                    <div key={i.l} className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full" style={{ background: i.c }} />
-                        <span className="text-xs text-slate-400">{i.l}</span>
+            {!hasData ? (
+                <div className="flex-1 flex flex-col justify-center items-center">
+                    <p className="text-slate-500 mb-2">No Assets Logic Found</p>
+                    <div className="text-[10px] text-slate-600 font-mono bg-slate-900 p-2 rounded max-w-full overflow-auto text-left">
+                        DEBUG:
+                        Asset Count: {assets?.length || 0}
+                        Prices Count: {Object.keys(prices).length}
+                        Data Structure: {JSON.stringify(data?.[0]?.children?.length || 'Empty')}
                     </div>
-                ))}
-            </div>
+                </div>
+            ) : (
+                <div className="w-full h-[300px] relative flex justify-center overflow-hidden">
+                    <Treemap
+                        width={800}
+                        height={300}
+                        data={data}
+                        dataKey="value"
+                        aspectRatio={4 / 3}
+                        stroke="#ffffff"
+                        fill="#334155"
+                        content={<CustomizedContent />}
+                        isAnimationActive={false}
+                    >
+                        <Tooltip wrapperStyle={{ zIndex: 1000 }} content={<CustomTooltip />} />
+                    </Treemap>
+                </div>
+            )}
         </div>
     );
 }

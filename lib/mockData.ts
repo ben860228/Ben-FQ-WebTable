@@ -78,46 +78,128 @@ export function calculateNetWorth(assets: Asset[]): number {
 }
 
 // Logic: Generate Cash Flow Data (Monthly)
-export function calculateCashFlow(recurringItems: RecurringItem[]) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export function calculateCashFlow(recurringItems: RecurringItem[], currentTotalAssets: number = 0) {
+    // Generate future 12 months starting from next month
+    const today = new Date();
+    const data = [];
+    let accumulatedNetWorth = currentTotalAssets;
 
-    return months.map((month, index) => {
+    for (let i = 1; i <= 12; i++) {
+        const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+        const monthLabel = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }); // "Jan 2026"
+        const monthIndex = d.getMonth() + 1; // 1-12
+
         let income = 0;
         let expense = 0;
+        let savings = 0;
+        const incomeItems: { name: string; amount: number; id: number }[] = [];
+        const expenseItems: { name: string; amount: number; id: number }[] = [];
+        const savingsItems: { name: string; amount: number; id: number }[] = [];
 
         recurringItems.forEach(item => {
             const rate = getExchangeRate(item.Currency);
             const amount = item.Amount_Base * rate;
-            const freq = parseInt(item.Frequency) || 12; // Default to monthly if parse fails
 
-            // Simple logic: If frequency is 12 (monthly), add every month.
-            // If specific month is set, only add then.
+            // Robust Frequency Logic
+            let freq = 12; // Default Monthly
+            const rawFreq = String(item.Frequency).toLowerCase();
+
+            if (rawFreq === 'year' || rawFreq === 'yearly' || rawFreq === '1') freq = 1;
+            else if (rawFreq === 'month' || rawFreq === 'monthly' || rawFreq === '12') freq = 12;
+            else {
+                const parsed = parseInt(item.Frequency);
+                if (!isNaN(parsed)) freq = parsed;
+            }
+
+            // Date Range Check
+            const itemStart = item.Start_Date ? new Date(item.Start_Date) : null;
+            const itemEnd = item.End_Date ? new Date(item.End_Date) : null;
+
+            // Allow active items (no end date or end date > current month)
+            // ... (keep existing date logic simplified or reused)
+
+            // Strict Date Handling: 
+            // If item starts AFTER this month, skip
+            if (itemStart && itemStart > new Date(d.getFullYear(), d.getMonth() + 1, 0)) return;
+            // If item ends BEFORE this month, skip
+            if (itemEnd && itemEnd < d) return;
 
             let applies = false;
-            if (freq === 12) applies = true;
-            else if (item.Specific_Month === index + 1) applies = true;
-            // Add more frequency logic here (e.g. quarterly) if needed
+            // Frequency Application
+            if (freq === 12) {
+                applies = true;
+            } else if (freq === 1) {
+                // Yearly: Check Specific Month
+                const targetMonth = item.Specific_Month || 1;
+                if (targetMonth === monthIndex) applies = true;
+            }
 
             if (applies) {
-                if (item.Type === 'Income') income += amount;
-                else expense += amount;
+                if (item.Type === 'Income') {
+                    income += amount;
+                    incomeItems.push({ name: item.Name, amount, id: Number(item.ID) || 0 });
+                } else {
+                    // Check for Savings
+                    const cat = item.Category || '';
+                    const isSaving = cat === 'Savings' || cat === 'Invest' || cat === 'Startups' || item.Name.includes('儲蓄') || item.Name.includes('存錢');
+
+                    if (isSaving) {
+                        savings += amount;
+                        savingsItems.push({ name: item.Name, amount, id: Number(item.ID) || 0 });
+                    } else {
+                        expense += amount;
+                        expenseItems.push({ name: item.Name, amount, id: Number(item.ID) || 0 });
+                    }
+                }
             }
         });
 
-        return {
-            monthLabel: month,
+        // Net Flow = Income - Expense - Savings (Savings is basically cash outflow to assets, so technically expense in cash flow terms, but we separate it visually)
+        // Actually, usually Net Flow = Income - Expenses. Savings is efficient use of Net Flow.
+        // If we want "Flow", Net Flow = Income - Outflow.
+        // User wants ProjectNetWorth.
+        // If I put money in Savings, is it gone? No, it's in Assets.
+        // So for Net Worth calculation:
+        // Income adds to NW. Expense subtracts from NW. Savings moves Cash to Asset (Zero NW change, or positive if Appreciates).
+        // But here we are projecting generic liquid NW.
+        // Let's assume Income adds + Expense substracts = Net Flow. 
+        // Savings -> If it's transfer to Asset, it's still part of NW.
+        // So Net Flow (Change in Net Worth) = Income - Expense (Consumption).
+        // Savings should NOT subtract from Accumulated Net Worth logic compared to consumption.
+        // But strictly cash flow: Cash goes down.
+        // Let's stick to User's "Projected NW".
+        // Accumulated NW += (Income - Expense). Savings is retained.
+        const netFlow = income - expense - savings; // Pure cash flow change (Cash Wallet)
+        // But projected NW should include savings? 
+        // Real Net Worth Change = Income - Consumption Expense.
+        // So Accumulated += Income - Expense. (Savings is still your money).
+
+        accumulatedNetWorth += (income - expense);
+
+        data.push({
+            monthLabel,
             income,
             expense,
-            net: income - expense
-        };
-    });
+            savings,
+            net: income - expense - savings, // Cash Flow Net
+            projectedNW: accumulatedNetWorth,
+            details: {
+                income: incomeItems,
+                expense: expenseItems,
+                savings: savingsItems
+            }
+        });
+    }
+
+    return data;
 }
 
 // Logic: Asset Allocation
 export function calculateAllocation(assets: Asset[]) {
     const allocation: Record<string, number> = {};
+    const details: Record<string, { name: string; value: number; id: string }[]> = {};
 
-    assets.forEach(asset => {
+    assets.forEach((asset, index) => {
         const rate = getExchangeRate(asset.Currency);
         const price = getLivePrice(asset.Name, asset.Currency);
         const value = asset.Quantity * price * rate;
@@ -127,16 +209,39 @@ export function calculateAllocation(assets: Asset[]) {
         const category = CATEGORY_MAPPING[rawCategory] || rawCategory;
 
         allocation[category] = (allocation[category] || 0) + value;
+
+        if (!details[category]) details[category] = [];
+        // Use Asset ID or index as string backup
+        details[category].push({
+            name: asset.Name,
+            value,
+            id: asset.ID ? String(asset.ID) : String(index)
+        });
     });
 
     // Tech Palette Colors
     const PALETTE = ['#10B981', '#3B82F6', '#F59E0B', '#8B5CF6', '#F43F5E', '#EC4899'];
 
-    return Object.entries(allocation).map(([name, value], index) => ({
-        name,
-        value,
-        color: PALETTE[index % PALETTE.length]
-    }));
+    return Object.entries(allocation).map(([name, value], index) => {
+        // Sort details by ID
+        const sortedDetails = (details[name] || []).sort((a, b) => {
+            // Try numeric sort first
+            const numA = parseInt(a.id);
+            const numB = parseInt(b.id);
+            if (!isNaN(numA) && !isNaN(numB)) {
+                return numA - numB;
+            }
+            // Fallback to string sort
+            return a.id.localeCompare(b.id);
+        });
+
+        return {
+            name,
+            value,
+            color: PALETTE[index % PALETTE.length],
+            details: sortedDetails
+        };
+    });
 }
 
 // Logic: Liquidity Monitor
