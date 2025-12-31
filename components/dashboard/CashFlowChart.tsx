@@ -21,10 +21,11 @@ interface CashFlowChartProps {
         expense: number;
         savings: number;
         net: number;
+        projectedNW: number;
         details?: {
-            income: { name: string; amount: number; id: number }[];
-            expense: { name: string; amount: number; id: number }[];
-            savings: { name: string; amount: number; id: number }[];
+            income: { name: string; amount: number; id: number; isConverted?: boolean }[];
+            expense: { name: string; amount: number; id: number; isConverted?: boolean }[];
+            savings: { name: string; amount: number; id: number; isConverted?: boolean }[];
         };
     }[];
 }
@@ -40,6 +41,11 @@ export default function CashFlowChart({ data }: CashFlowChartProps) {
             const topExpense = [...details.expense].sort((a, b) => (a.id || 0) - (b.id || 0));
             const topSavings = [...(details.savings || [])].sort((a, b) => (a.id || 0) - (b.id || 0));
 
+            const formatMoney = (amount: number, isConverted?: boolean) => {
+                const prefix = isConverted ? '*' : '';
+                return `${prefix}$${Math.round(amount).toLocaleString()}`;
+            };
+
             return (
                 <div className="bg-slate-900/95 border border-slate-700 p-4 rounded-xl shadow-xl backdrop-blur-md min-w-[240px] z-50">
                     <p className="text-slate-200 font-bold mb-3 border-b border-slate-800 pb-2 sticky top-0 bg-slate-900/95">{label}</p>
@@ -53,7 +59,7 @@ export default function CashFlowChart({ data }: CashFlowChartProps) {
                         {topIncome.map((i: any, idx: number) => (
                             <div key={idx} className="flex justify-between text-[11px] text-slate-400 hover:text-white hover:bg-white/5 px-1 rounded transition-colors">
                                 <span className="truncate max-w-[140px]">{i.name}</span>
-                                <span className="font-mono">${Math.round(i.amount).toLocaleString()}</span>
+                                <span className="font-mono">{formatMoney(i.amount, i.isConverted)}</span>
                             </div>
                         ))}
                     </div>
@@ -67,7 +73,7 @@ export default function CashFlowChart({ data }: CashFlowChartProps) {
                         {topExpense.map((i: any, idx: number) => (
                             <div key={idx} className="flex justify-between text-[11px] text-slate-400 hover:text-white hover:bg-white/5 px-1 rounded transition-colors">
                                 <span className="truncate max-w-[140px]">{i.name}</span>
-                                <span className="font-mono">${Math.round(i.amount).toLocaleString()}</span>
+                                <span className="font-mono">{formatMoney(i.amount, i.isConverted)}</span>
                             </div>
                         ))}
                     </div>
@@ -80,19 +86,22 @@ export default function CashFlowChart({ data }: CashFlowChartProps) {
                                 <span className="text-white">${monthData.savings.toLocaleString()}</span>
                             </div>
                             <div className="mb-3 pl-2 border-l-2 border-amber-500/20 space-y-1">
-                                {topSavings.map((i: any, idx: number) => (
-                                    <div key={idx} className="flex justify-between text-[11px] text-slate-400 hover:text-white hover:bg-white/5 px-1 rounded transition-colors">
-                                        <span className="truncate max-w-[140px]">{i.name}</span>
-                                        <span className="font-mono">${Math.round(i.amount).toLocaleString()}</span>
-                                    </div>
-                                ))}
+                                {topSavings.map((i: any, idx: number) => {
+                                    const isWin = i.name.includes('(Win)');
+                                    return (
+                                        <div key={idx} className="flex justify-between text-[11px] hover:bg-white/5 px-1 rounded transition-colors text-slate-400">
+                                            <span className={`truncate max-w-[140px] ${isWin ? 'text-amber-300 font-bold' : ''}`}>{i.name}</span>
+                                            <span className={`font-mono ${isWin ? 'text-amber-300 font-bold' : ''}`}>{formatMoney(i.amount, i.isConverted)}</span>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </>
                     )}
 
                     <div className="mt-2 pt-2 border-t border-slate-700 flex justify-between items-center">
                         <span className="text-xs text-slate-400">Projected NW</span>
-                        <span className="text-sm font-bold font-mono text-amber-400">
+                        <span className="text-sm font-bold font-mono text-blue-400">
                             ${(monthData.projectedNW / 1000).toFixed(0)}k
                         </span>
                     </div>
@@ -122,8 +131,9 @@ export default function CashFlowChart({ data }: CashFlowChartProps) {
                         <div className="w-2 h-2 rounded-full bg-amber-500" />
                         <span className="text-slate-400">儲蓄</span>
                     </div>
+                    {/* Updated Visual Legend for Net Worth -> Blue */}
                     <div className="flex items-center gap-1.5">
-                        <div className="w-3 h-0.5 bg-amber-400" />
+                        <div className="w-3 h-0.5 bg-blue-500" />
                         <span className="text-slate-400">預估淨值</span>
                     </div>
                 </div>
@@ -167,7 +177,7 @@ export default function CashFlowChart({ data }: CashFlowChartProps) {
                         <YAxis
                             yAxisId="right"
                             orientation="right"
-                            stroke="#F59E0B"
+                            stroke="#3B82F6"
                             fontSize={12}
                             tickFormatter={(value) => `$${(value / 1000000).toFixed(1)}M`}
                             axisLine={false}
@@ -184,9 +194,9 @@ export default function CashFlowChart({ data }: CashFlowChartProps) {
                             type="monotone"
                             dataKey="projectedNW"
                             name="預估淨值"
-                            stroke="#F59E0B"
+                            stroke="#3B82F6"
                             strokeWidth={3}
-                            dot={{ r: 4, fill: "#F59E0B", strokeWidth: 2, stroke: "#fff" }}
+                            dot={{ r: 4, fill: "#3B82F6", strokeWidth: 2, stroke: "#fff" }}
                             activeDot={{ r: 6 }}
                         />
                     </ComposedChart>

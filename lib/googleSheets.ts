@@ -1,6 +1,6 @@
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JWT } from 'google-auth-library';
-import { Asset, RecurringItem, OneOffEvent } from './types';
+import { Asset, RecurringItem, OneOffEvent, DebtDetail, InsuranceDetail } from './types';
 
 // --- SERVER SIDE ONLY ---
 const SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -56,27 +56,27 @@ export async function fetchRecurringItems(): Promise<RecurringItem[]> {
     const rows = await sheet.getRows();
 
     if (rows.length > 0) {
-        console.log('--- DEBUG: First Row Headers/Data ---');
-        console.log('Available Headers:', sheet.headerValues);
-        console.log('Row 1 Category_Name:', rows[0].get('Category_Name'));
-        console.log('Row 1 Category:', rows[0].get('Category'));
+        // console.log('Row 1 Category_Name:', rows[0].get('Category_Name'));
     }
 
-    return rows.map((row, index) => ({
-        ID: row.get('ID') || `R${index}`,
-        Type: (row.get('Type') as 'Income' | 'Expense') || 'Expense',
-        Category: row.get('Category') || 'General',
-        Category_Name: row.get('Category_Name'), // Fetch Chinese mapped name if available
-        Name: row.get('Name') || 'Unnamed Item',
-        Amount_Base: parseNumber(row.get('Amount_Base')),
-        Currency: row.get('Currency') || 'TWD',
-        Frequency: (parseNumber(row.get('Frequency')) || 12).toString(), // Default to monthly (12/yr) logic if missing? Or keep as string? Types says string.
-        Specific_Month: row.get('Specific_Month') ? parseInt(row.get('Specific_Month')) : undefined,
-        Payment_Day: row.get('Payment_Day') ? parseInt(row.get('Payment_Day')) : undefined,
-        Start_Date: row.get('Start_Date'),
-        End_Date: row.get('End_Date'),
-        Note: row.get('Note')
-    }));
+    return rows.map((row, index) => {
+        const freqVal = row.get('Frequency');
+        return {
+            ID: row.get('ID') || `R${index}`,
+            Type: (row.get('Type') as 'Income' | 'Expense') || 'Expense',
+            Category: row.get('Category') || 'General',
+            Category_Name: row.get('Category_Name'), // Fetch Chinese mapped name if available
+            Name: row.get('Name') || 'Unnamed Item',
+            Amount_Base: parseNumber(row.get('Amount_Base')),
+            Currency: row.get('Currency') || 'TWD',
+            Frequency: freqVal ? String(freqVal) : '12',
+            Specific_Month: row.get('Specific_Month'), // Keep as string
+            Payment_Day: row.get('Payment_Day') ? parseInt(row.get('Payment_Day')) : undefined,
+            Start_Date: row.get('Start_Date'),
+            End_Date: row.get('End_Date'),
+            Note: row.get('Note')
+        };
+    });
 }
 
 export async function fetchOneOffEvents(): Promise<OneOffEvent[]> {
@@ -122,4 +122,63 @@ export async function fetchCategoryMap(): Promise<Record<string, string>> {
 
     console.log('Fetched Dynamic Category Map:', Object.keys(map).length, 'entries');
     return map;
+}
+
+export async function fetchDebtDetails(tableId: string): Promise<DebtDetail[]> {
+    const doc = await getDoc();
+    if (!doc) return [];
+
+    console.log(`Fetching Debt Table: ${tableId}`);
+    const sheet = doc.sheetsByTitle[tableId];
+    if (!sheet) {
+        console.warn(`Debt Sheet ${tableId} not found`);
+        return [];
+    }
+
+    const rows = await sheet.getRows();
+    return rows.map(row => ({
+        Date: row.get('Payment_Date') || '',
+        Principal: parseNumber(row.get('Principal_Amount')),
+        Interest: parseNumber(row.get('Interest_Amount')),
+        Balance: parseNumber(row.get('Remaining_Principal')),
+        Payment: parseNumber(row.get('Payment_Amount')),
+        Total_Loan: parseNumber(row.get('Debt_Amount'))
+    }));
+}
+
+export async function fetchInsuranceDetails(tableId: string): Promise<InsuranceDetail[]> {
+    const doc = await getDoc();
+    if (!doc) return [];
+
+    console.log(`Fetching Insurance Table: ${tableId}`);
+    const sheet = doc.sheetsByTitle[tableId];
+    if (!sheet) {
+        console.warn(`Insurance Sheet ${tableId} not found`);
+        return [];
+    }
+
+    const rows = await sheet.getRows();
+    console.log(`[DEBUG FETCH] Table ${tableId} loaded ${rows.length} rows.`);
+    if (rows.length > 0) {
+        console.log(`[DEBUG FETCH] ${tableId} Row 1 Date: ${rows[0].get('Payment_Date')}`);
+    }
+
+    return rows.map(row => {
+        // Fallback logic for Cash Value: Actual > Expected > 0
+        const actual = parseNumber(row.get('Actual_YearEnd'));
+        const expected = parseNumber(row.get('Expected_YearEnd'));
+        const cashValue = actual > 0 ? actual : expected;
+
+        return {
+            Date: row.get('Payment_Date') || '',
+            Premium: parseNumber(row.get('Premium_Total')),
+            Cash_Value: cashValue,
+            Accumulated_Savings: parseNumber(row.get('Accu_Savings_Amount')),
+            Cost: parseNumber(row.get('Insurance_Cost') || row.get('Expense_Amount')),
+            Year: parseInt(row.get('Year')) || 0,
+            Calculation_EXP: parseNumber(row.get('Calculation_EXP')),
+            Calculation_SAV: parseNumber(row.get('Calculation_SAV')),
+            Calculation_WIN: parseNumber(row.get('Calculation_WIN'))
+        };
+    });
 }

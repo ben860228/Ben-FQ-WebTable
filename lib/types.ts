@@ -22,7 +22,7 @@ export interface RecurringItem {
     Amount_Base: number;
     Currency: string;
     Payment_Day?: number;
-    Specific_Month?: number;
+    Specific_Month?: string; // Changed to string to support '1;4;7;10'
     Start_Date?: string;
     End_Date?: string;
     Category: string;
@@ -38,4 +38,25 @@ export interface OneOffEvent {
     Amount: number;
     Status?: EventStatus;
     Note?: string;
+}
+
+export interface DebtDetail {
+    Date: string; // Mapped from 'Payment_Date'
+    Principal: number; // Mapped from 'Principal_Amount'
+    Interest: number; // Mapped from 'Interest_Amount'
+    Balance: number; // Mapped from 'Remaining_Principal'
+    Payment: number; // Mapped from 'Payment_Amount'
+    Total_Loan: number; // Mapped from 'Debt_Amount'
+}
+
+export interface InsuranceDetail {
+    Date: string; // Mapped from 'Payment_Date'
+    Premium: number; // Mapped from 'Premium_Total'
+    Cash_Value: number; // Mapped from 'Actual_YearEnd' or 'Expected_YearEnd'
+    Accumulated_Savings: number; // Mapped from 'Accu_Savings_Amount'
+    Cost: number; // Mapped from 'Insurance_Cost' (for R10 logic)
+    Year: number; // Explicit Year from CSV
+    Calculation_EXP?: number; // Pre-calculated Expense
+    Calculation_SAV?: number; // Pre-calculated Savings
+    Calculation_WIN?: number; // Pre-calculated Gain
 }
