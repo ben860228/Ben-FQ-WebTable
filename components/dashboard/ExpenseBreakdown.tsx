@@ -11,11 +11,26 @@ interface ExpenseBreakdownProps {
 
 export default function ExpenseBreakdown({ items, categoryMap = {} }: ExpenseBreakdownProps) {
     const data = useMemo(() => {
+        // Filter out items not active in the current year (or generally active)
+        // Simplification: If Start_Date is in the future (> today + 1 month?), exclude.
+        // Or strictly: If Start_Date > Today, exclude? 
+        // User said "Start_Date 以前的事件不可以放進來" -> If Today < Start_Date, exclude.
+        const today = new Date();
+
+        const activeItems = items.filter(i => {
+            if (i.Start_Date && new Date(i.Start_Date) > today) return false;
+            // If End_Date exists and is in the past, exclude? Usually yes for "Current Breakdown".
+            if (i.End_Date && new Date(i.End_Date) < today) return false;
+            return true;
+        });
+
         // Include Expense AND Savings/Invest items
-        const expenses = items.filter(i => {
+        const expenses = activeItems.filter(i => {
             const cat = i.Category || '';
             const isSaving = cat === 'Savings' || cat === 'Invest' || cat === 'Startups' || i.Name.includes('儲蓄') || i.Name.includes('存錢');
-            return i.Type === 'Expense' || isSaving;
+            // Explicitly include R09/R10 even if they are marked as something else, because we want to categorize them as Savings below
+            const isSpecial = i.ID === 'R09' || i.ID === 'R10';
+            return i.Type === 'Expense' || isSaving || isSpecial;
         });
 
         const breakdown: Record<string, number> = {};
@@ -26,17 +41,30 @@ export default function ExpenseBreakdown({ items, categoryMap = {} }: ExpenseBre
             const freqStr = String(item.Frequency || '').trim().toLowerCase();
             let multiplier = 1;
 
-            if (freqStr === '12' || freqStr.includes('month')) multiplier = 12;
+            if (freqStr.includes(';')) {
+                // Custom specific months, e.g. "1;4;7;10" -> 4 times a year
+                multiplier = freqStr.split(';').filter(s => s.trim().length > 0).length;
+            }
+            else if (freqStr === '12' || freqStr.includes('month')) multiplier = 12;
             else if (freqStr === '4' || freqStr.includes('quarter')) multiplier = 4;
             else if (freqStr === '52' || freqStr.includes('week')) multiplier = 52;
+            else if (freqStr === '1' || freqStr.includes('year')) multiplier = 1;
+            else {
+                const parsed = parseInt(freqStr);
+                if (!isNaN(parsed)) multiplier = parsed;
+            }
 
             annualAmount = annualAmount * multiplier;
 
             // Determine Category
+            // 1. Force R09/R10/Insurance-Savings to "長期投資/儲蓄"
+            // 2. Map Category
             let catName = categoryMap[item.Category] || item.Category;
 
-            // Force Savings category grouping if it looks like savings
-            if (catName === 'Savings' || catName === 'Invest' || catName === 'Startups' || item.Name.includes('儲蓄') || item.Name.includes('存錢')) {
+            const isSpecialInsurance = item.ID === 'R09' || item.ID === 'R10';
+            const isSavingsLike = catName === 'Savings' || catName === 'Invest' || catName === 'Startups' || item.Name.includes('儲蓄') || item.Name.includes('存錢');
+
+            if (isSpecialInsurance || isSavingsLike) {
                 catName = '長期投資/儲蓄';
             }
 
