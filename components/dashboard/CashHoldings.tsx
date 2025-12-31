@@ -21,12 +21,12 @@ export default function CashHoldings({ assets }: CashHoldingsProps) {
                     <h3 className="text-sm font-medium text-slate-400">現金部位 (Cash Holdings)</h3>
                     <p className="text-2xl font-bold text-white mt-1">帳戶明細</p>
                 </div>
-                <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
-                    <Wallet className="h-5 w-5 text-emerald-400" />
+                <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+                    <Wallet className="h-4 w-4 text-emerald-400" />
                 </div>
             </div>
 
-            <div className="space-y-3 overflow-y-auto max-h-[300px] pr-2 custom-scrollbar">
+            <div className="space-y-1 overflow-y-auto pr-2 custom-scrollbar flex-1 min-h-0">
                 {sortedAssets.map((asset) => {
                     const isJPY = asset.Currency === 'JPY';
                     const isUSD = asset.Currency === 'USD';
@@ -47,19 +47,25 @@ export default function CashHoldings({ assets }: CashHoldingsProps) {
                         textStyle = 'text-amber-200 group-hover:text-amber-400';
                     }
 
+                    let currencySymbol = asset.Currency;
+                    if (isTWD) currencySymbol = 'NT$';
+                    if (isUSD) currencySymbol = '$';
+                    if (isJPY) currencySymbol = '¥';
+
                     return (
-                        <div key={asset.ID} className={`flex items-center justify-between p-3 rounded-xl border transition-all group ${bgStyle}`}>
+                        <div key={asset.ID} className={`flex items-center justify-between p-2 rounded-lg border transition-all group ${bgStyle}`}>
                             <div className="flex items-center gap-3">
-                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold border font-mono ${iconStyle}`}>
+                                <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold border font-mono ${iconStyle}`}>
                                     {asset.Currency}
                                 </div>
                                 <div>
                                     <p className={`text-sm font-medium transition-colors ${textStyle}`}>{asset.Name}</p>
-                                    <p className="text-[10px] text-slate-500">{asset.Note || 'Account'}</p>
+                                    {/* <p className="text-[10px] text-slate-500">{asset.Note || 'Account'}</p> */}
                                 </div>
                             </div>
                             <div className="text-right">
-                                <p className={`text-lg font-bold font-mono tracking-tight ${isJPY ? 'text-blue-100' : isUSD ? 'text-amber-100' : 'text-white'}`}>
+                                <p className={`text-sm font-bold font-mono tracking-tight ${isJPY ? 'text-blue-100' : isUSD ? 'text-amber-100' : 'text-white'}`}>
+                                    <span className="text-slate-500 mr-1 text-xs font-normal">{currencySymbol}</span>
                                     {asset.Quantity.toLocaleString()}
                                 </p>
                             </div>

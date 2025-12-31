@@ -119,11 +119,11 @@ export default async function Home() {
         </div>
 
         {/* 4. Detailed Holdings: Cash List + Invest Table */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          <div className="lg:col-span-1 h-[600px]">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+          <div className="lg:col-span-2 h-[600px]">
             <CashHoldings assets={cashAssets} />
           </div>
-          <div className="lg:col-span-2 h-[600px]">
+          <div className="lg:col-span-3 h-[600px]">
             <AssetTable assets={investAssets} categoryMap={categoryMap} />
           </div>
         </div>

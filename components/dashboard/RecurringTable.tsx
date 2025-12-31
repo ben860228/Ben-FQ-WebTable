@@ -134,23 +134,23 @@ export default function RecurringTable({ items, categoryMap = {} }: RecurringTab
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="border-b border-slate-800 text-xs text-slate-500 font-mono uppercase tracking-wider">
-                            <th className="pb-4 font-medium pl-0 cursor-pointer hover:text-indigo-400" onClick={() => requestSort('Name')}>
+                            <th className="pb-2 font-medium pl-0 cursor-pointer hover:text-indigo-400" onClick={() => requestSort('Name')}>
                                 項目 (Name)
                             </th>
-                            <th className="pb-4 font-medium text-center cursor-pointer hover:text-indigo-400" onClick={() => requestSort('Factory')}>
+                            <th className="pb-2 font-medium text-center cursor-pointer hover:text-indigo-400" onClick={() => requestSort('Factory')}>
                                 頻率 (Freq)
                             </th>
-                            <th className="pb-4 font-medium text-center cursor-pointer hover:text-indigo-400" onClick={() => requestSort('Category')}>
+                            <th className="pb-2 font-medium text-center cursor-pointer hover:text-indigo-400" onClick={() => requestSort('Category')}>
                                 類別 (Cat)
                             </th>
-                            <th className="pb-4 font-medium text-center">
+                            <th className="pb-2 font-medium text-center">
                                 下次日期 (Next)
                             </th>
-                            <th className="pb-4 font-medium text-right cursor-pointer hover:text-indigo-400" onClick={() => requestSort('Amount_Base')}>
+                            <th className="pb-2 font-medium text-right cursor-pointer hover:text-indigo-400" onClick={() => requestSort('Amount_Base')}>
                                 單次金額 (Amount)
                             </th>
                             {/* Moved Annual to end as requested */}
-                            <th className="pb-4 font-medium text-right cursor-pointer hover:text-indigo-400" onClick={() => requestSort('Annual')}>
+                            <th className="pb-2 font-medium text-right cursor-pointer hover:text-indigo-400" onClick={() => requestSort('Annual')}>
                                 年金額 (Annual)
                             </th>
                         </tr>
@@ -158,36 +158,36 @@ export default function RecurringTable({ items, categoryMap = {} }: RecurringTab
                     <tbody className="divide-y divide-slate-800/50">
                         {sortedItems.map((item) => (
                             <tr key={item.ID} className="hover:bg-slate-900/50 transition-colors group">
-                                <td className="p-4 pl-0 font-medium text-slate-200">
+                                <td className="py-2 px-4 pl-0 font-medium text-slate-200">
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-1 h-8 rounded-full ${item.Type === 'Income' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                        <div className={`w-1 h-6 rounded-full ${item.Type === 'Income' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                                         <div>
                                             <div className="text-sm font-semibold">{item.Name}</div>
                                             {item.Note && <div className="text-[10px] text-slate-500 mt-0.5">{item.Note}</div>}
                                         </div>
                                     </div>
                                 </td>
-                                <td className="p-4 text-center">
-                                    <div className="text-[10px] text-slate-400 bg-slate-900 px-2 py-1 rounded border border-slate-800 inline-block font-mono">
+                                <td className="py-2 px-4 text-center">
+                                    <div className="text-[10px] text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800 inline-block font-mono">
                                         {item.DisplayFrequency}
                                     </div>
                                 </td>
-                                <td className="p-4 text-center">
-                                    <span className="inline-block px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs font-medium border border-slate-700">
+                                <td className="py-2 px-4 text-center">
+                                    <span className="inline-block px-2 py-0.5 bg-slate-800 text-slate-300 rounded text-[10px] font-medium border border-slate-700">
                                         {item.DisplayCategory}
                                     </span>
                                 </td>
-                                <td className="p-4 text-center text-xs font-mono text-slate-300">
+                                <td className="py-2 px-4 text-center text-xs font-mono text-slate-300">
                                     <div className="flex items-center justify-center gap-1.5 opacity-80">
                                         {item.NextDate}
                                     </div>
                                 </td>
-                                <td className="p-4 text-right">
+                                <td className="py-2 px-4 text-right">
                                     <span className={`font-mono font-bold text-sm ${item.Type === 'Income' ? 'text-emerald-400' : 'text-rose-400'}`}>
                                         {item.Currency} ${item.Amount_Base.toLocaleString()}
                                     </span>
                                 </td>
-                                <td className="p-4 text-right">
+                                <td className="py-2 px-4 text-right">
                                     <div className="font-mono text-xs text-slate-600">
                                         ${item.Annual.toLocaleString()}
                                     </div>
