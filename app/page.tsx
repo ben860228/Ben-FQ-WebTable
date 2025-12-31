@@ -57,7 +57,7 @@ export default async function Home() {
   // For now, let's fix the Visual Components first which is what the user sees.
 
   const totalNetWorth = calculateNetWorth(assets);
-  const cashFlowData = calculateCashFlow(recurringItems);
+  const cashFlowData = calculateCashFlow(recurringItems, totalNetWorth);
   // Note: calculateAllocation uses the hardcoded map internally. 
   // Ideally, we refactor calculateAllocation to accept the map, but user didn't complain about the Donut Legend specifically yet, mostly the Tables/Treemap tags. 
   // I'll stick to updating visual components props for now.
@@ -101,21 +101,24 @@ export default async function Home() {
           <TimelineAlert nextEvent={nextEvent || { Name: 'No Events', Date: new Date().toISOString() }} />
         </div>
 
-        {/* 2. Main Visuals: Cash Flow & Allocation */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[400px]">
+        {/* 2. Main Visuals: Cash Flow & Expense */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[400px] relative z-30">
           <div className="lg:col-span-2 h-full">
             <CashFlowChart data={cashFlowData} />
           </div>
           <div className="lg:col-span-1 h-full">
-            {/* AssetAllocation needs refactor to use dynamic map, but skipping for speed unless asked */}
-            <AssetAllocation data={allocationData} />
+            <ExpenseBreakdown items={recurringItems} categoryMap={categoryMap} />
           </div>
         </div>
 
-        {/* 3. Advanced Analytics */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[400px]">
-          <ExpenseBreakdown items={recurringItems} categoryMap={categoryMap} />
-          <AssetTreemap assets={investAssets} categoryMap={categoryMap} />
+        {/* 3. Asset Allocation & Heatmap */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[400px] relative z-20">
+          <div className="lg:col-span-1 h-full">
+            <AssetAllocation data={allocationData} />
+          </div>
+          <div className="lg:col-span-2 h-full">
+            <AssetTreemap assets={investAssets} categoryMap={categoryMap} />
+          </div>
         </div>
 
         {/* 4. Detailed Holdings: Cash List + Invest Table */}

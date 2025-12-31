@@ -1,9 +1,8 @@
 'use client';
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, Label } from 'recharts';
 import { RecurringItem } from '@/lib/types';
 import { useMemo } from 'react';
-import { CATEGORY_MAPPING } from '@/lib/mockData';
 
 interface ExpenseBreakdownProps {
     items: RecurringItem[];
@@ -12,67 +11,144 @@ interface ExpenseBreakdownProps {
 
 export default function ExpenseBreakdown({ items, categoryMap = {} }: ExpenseBreakdownProps) {
     const data = useMemo(() => {
-        const expenses = items.filter(i => i.Type === 'Expense');
+        // Include Expense AND Savings/Invest items
+        const expenses = items.filter(i => {
+            const cat = i.Category || '';
+            const isSaving = cat === 'Savings' || cat === 'Invest' || cat === 'Startups' || i.Name.includes('儲蓄') || i.Name.includes('存錢');
+            return i.Type === 'Expense' || isSaving;
+        });
+
         const breakdown: Record<string, number> = {};
+        const details: Record<string, { name: string; amount: number }[]> = {};
 
         expenses.forEach(item => {
-            // Primitive calc assuming monthly
-            // In real app, reuse the precise logic from mockData
-            const amount = item.Amount_Base;
-            const catName = categoryMap[item.Category] || item.Category;
-            breakdown[catName] = (breakdown[catName] || 0) + amount;
+            let annualAmount = item.Amount_Base;
+            const freqStr = String(item.Frequency || '').trim().toLowerCase();
+            let multiplier = 1;
+
+            if (freqStr === '12' || freqStr.includes('month')) multiplier = 12;
+            else if (freqStr === '4' || freqStr.includes('quarter')) multiplier = 4;
+            else if (freqStr === '52' || freqStr.includes('week')) multiplier = 52;
+
+            annualAmount = annualAmount * multiplier;
+
+            // Determine Category
+            let catName = categoryMap[item.Category] || item.Category;
+
+            // Force Savings category grouping if it looks like savings
+            if (catName === 'Savings' || catName === 'Invest' || catName === 'Startups' || item.Name.includes('儲蓄') || item.Name.includes('存錢')) {
+                catName = '長期投資/儲蓄';
+            }
+
+            breakdown[catName] = (breakdown[catName] || 0) + annualAmount;
+
+            if (!details[catName]) details[catName] = [];
+            // Push annualized amount
+            details[catName].push({ name: item.Name, amount: annualAmount });
         });
 
         return Object.entries(breakdown)
-            .map(([name, value]) => ({ name, value }))
+            .map(([name, value]) => ({
+                name,
+                value,
+                isGood: name === '長期投資/儲蓄' || name === 'Savings' || name === 'Invest',
+                details: (details[name] || []).sort((a, b) => b.amount - a.amount)
+            }))
             .sort((a, b) => b.value - a.value);
-    }, [items]);
+    }, [items, categoryMap]);
 
-    const COLORS = ['#F59E0B', '#10B981', '#3B82F6', '#6366F1', '#8B5CF6', '#EC4899', '#F43F5E'];
+    const COLORS = ['#F43F5E', '#EC4899', '#D946EF', '#A855F7', '#8B5CF6', '#6366F1', '#3B82F6', '#0EA5E9', '#10B981', '#14B8A6'];
+
+    // Calculate Totals
+    const totalExpense = data.filter(d => d.name !== '長期投資/儲蓄').reduce((sum, item) => sum + item.value, 0);
+    const totalSavings = data.find(d => d.name === '長期投資/儲蓄')?.value || 0;
+    const grandTotal = totalExpense + totalSavings;
 
     return (
-        <div className="glass-card rounded-[2rem] p-8 h-full flex flex-col border border-slate-800 bg-slate-950">
+        <div className="glass-card rounded-[2rem] p-8 h-full flex flex-col border border-slate-800 bg-slate-950 relative">
             <div className="mb-6">
                 <h3 className="text-sm font-medium text-slate-400">支出結構 (Breakdown)</h3>
                 <p className="text-2xl font-bold text-white mt-1">消費分析</p>
             </div>
 
-            <div className="flex-1 min-h-0 relative">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie
-                            data={data}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={90}
-                            paddingAngle={5}
-                            dataKey="value"
-                            stroke="none"
-                        >
-                            {data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                        </Pie>
-                        <Tooltip
-                            formatter={(value: any) => [`$${Number(value).toLocaleString()}`, 'Amount']}
-                            contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid #1e293b', boxShadow: 'none' }}
-                            itemStyle={{ color: '#f8fafc' }}
-                            labelStyle={{ color: '#94a3b8' }}
-                        />
-                        <Legend
-                            layout="vertical"
-                            verticalAlign="middle"
-                            align="right"
-                            iconType="circle"
-                            formatter={(value) => <span className="text-slate-400 text-xs ml-2">{value}</span>}
-                        />
-                    </PieChart>
-                </ResponsiveContainer>
-                {/* Center Text Overlay */}
-                <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none pr-28">
-                    <span className="text-xs text-slate-500 block">Total</span>
-                    <span className="text-rose-500 font-bold text-lg">EXP</span>
+            <div className="flex-1 min-h-[300px] flex items-center gap-4">
+
+                {/* Left: Pie Chart Section */}
+                <div className="flex-1 h-full relative flex items-center justify-center">
+                    {/* Absolute Center Text Overlay */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 pb-2">
+                        <div className="text-xs font-bold text-slate-400 mb-1">支出: ${(totalExpense / 1000).toFixed(0)}k</div>
+                        <div className="text-xs font-bold text-amber-500">儲蓄: ${(totalSavings / 1000).toFixed(0)}k</div>
+                    </div>
+
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie
+                                data={data}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={60}
+                                outerRadius={90}
+                                paddingAngle={2}
+                                dataKey="value"
+                                stroke="none"
+                            >
+                                {data.map((entry, index) => {
+                                    let color = COLORS[index % COLORS.length];
+                                    if (entry.name === '長期投資/儲蓄' || entry.name === 'Savings' || entry.name === 'Invest') {
+                                        color = '#F59E0B'; // Gold/Amber
+                                    }
+                                    return <Cell key={`cell-${index}`} fill={color} />;
+                                })}
+                            </Pie>
+                            <Tooltip
+                                wrapperStyle={{ zIndex: 1000 }}
+                                content={({ active, payload }) => {
+                                    if (active && payload && payload.length) {
+                                        const data = payload[0].payload as any;
+                                        return (
+                                            <div className="bg-slate-900 border border-slate-700 p-3 rounded-lg shadow-xl z-50 min-w-[200px] max-h-[300px] overflow-y-auto">
+                                                <p className="text-white font-medium mb-1 border-b border-slate-700 pb-1">{data.name}</p>
+                                                <p className="text-slate-300 text-sm font-bold">
+                                                    ${Number(data.value).toLocaleString()}
+                                                </p>
+                                                <p className="text-slate-500 text-xs mb-2">
+                                                    {((Number(data.value) / grandTotal) * 100).toFixed(1)}% of Total
+                                                </p>
+
+                                                {/* Full Details List */}
+                                                <div className="space-y-1">
+                                                    {data.details.map((item: any, idx: number) => (
+                                                        <div key={idx} className="flex justify-between text-[10px] text-slate-400 border-b border-slate-800/50 last:border-0 py-0.5">
+                                                            <span className="truncate pr-2">{item.name}</span>
+                                                            <span className="font-mono text-slate-300">${Number(item.amount).toLocaleString()}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                }}
+                            />
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
+
+                {/* Right: Custom Legend Details */}
+                <div className="w-[140px] flex flex-col justify-center space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                    {data.map((entry, index) => {
+                        let color = COLORS[index % COLORS.length];
+                        if (entry.name === '長期投資/儲蓄' || entry.name === 'Savings' || entry.name === 'Invest') {
+                            color = '#F59E0B';
+                        }
+                        return (
+                            <div key={`legend-${index}`} className="flex items-center text-xs text-slate-400">
+                                <span className="w-2 h-2 rounded-full mr-2 shrink-0" style={{ backgroundColor: color }} />
+                                <span className="truncate" title={entry.name}>{entry.name}</span>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
         </div>
