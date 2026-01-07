@@ -47,7 +47,7 @@ export default function RecurringTable({ items, categoryMap = {} }: RecurringTab
 
         if (item.Specific_Month) {
             // Yearly Logic
-            targetMonth = item.Specific_Month;
+            targetMonth = parseInt(item.Specific_Month.split(';')[0]);
             // If current date > target date this year, move to next year
             const thisYearDate = new Date(year, targetMonth - 1, targetDay);
             if (now > thisYearDate) {

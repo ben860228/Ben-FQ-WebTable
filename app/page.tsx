@@ -26,7 +26,7 @@ import {
   fetchDebtDetails,
   fetchInsuranceDetails
 } from '@/lib/googleSheets';
-import { fetchExchangeRates, ExchangeRates } from '@/lib/currency';
+import { ExchangeRates } from '@/lib/currency'; // Only Import Type
 import { fetchStockPrices, StockData } from '@/lib/stocks';
 import { Asset, RecurringItem, OneOffEvent, DebtDetail, InsuranceDetail } from '@/lib/types';
 import { CATEGORY_MAPPING as DEFAULT_MAPPING } from '@/lib/mockData';
@@ -56,18 +56,14 @@ export default async function Home() {
 
   try {
     // Phase 1: Fetch Base Data & Currency
-    const [a, r, o, m, d33, i09, i10, ratesData] = await Promise.all([
+    const [a, r, o, m, d33, i09, i10] = await Promise.all([
       fetchAssets().catch(e => { console.error('Asset Fetch Error', e); return []; }),
       fetchRecurringItems().catch(e => { console.error('Recurring Fetch Error', e); return []; }),
       fetchOneOffEvents().catch(e => { console.error('Event Fetch Error', e); return []; }),
       fetchCategoryMap().catch(e => { console.error('Map Fetch Error', e); return {}; }),
       fetchDebtDetails('R33_Debt_Table').catch(e => { console.error('R33 Fetch Error', e); return []; }),
       fetchInsuranceDetails('R09_Ins_Table').catch(e => { console.error('R09 Fetch Error', e); return []; }),
-      fetchInsuranceDetails('R10_Ins_Table').catch(e => { console.error('R10 Fetch Error', e); return []; }),
-      fetchExchangeRates().catch(e => {
-        console.error('Rates Fetch Error', e);
-        return { rates: { USD: 32.5, JPY: 0.22, TWD: 1 }, isLive: false };
-      })
+      fetchInsuranceDetails('R10_Ins_Table').catch(e => { console.error('R10 Fetch Error', e); return []; })
     ]);
 
     assets = a || [];
@@ -77,7 +73,28 @@ export default async function Home() {
     debtR33 = d33 || [];
     insR09 = i09 || [];
     insR10 = i10 || [];
-    if (ratesData) exchangeData = ratesData;
+
+    // Logic: Derive Rates from Assets
+    // Find Fiat/Cash assets with Currency USD/JPY and get their Unit_Price (which is Exchange Rate to TWD)
+    // Default fallback
+    const derivedRates: ExchangeRates = { USD: 32.5, JPY: 0.22, TWD: 1 };
+
+    // Find USD Rate (e.g. from "永豐外幣帳戶(USD)" or similar)
+    const usdAsset = assets.find(a => (a.Category === 'Cash' || a.Type === 'Fiat') && a.Currency === 'USD' && a.Unit_Price && a.Unit_Price > 0);
+    if (usdAsset && usdAsset.Unit_Price) {
+      derivedRates.USD = usdAsset.Unit_Price;
+    }
+
+    // Find JPY Rate
+    const jpyAsset = assets.find(a => (a.Category === 'Cash' || a.Type === 'Fiat') && a.Currency === 'JPY' && a.Unit_Price && a.Unit_Price > 0);
+    if (jpyAsset && jpyAsset.Unit_Price) {
+      derivedRates.JPY = jpyAsset.Unit_Price;
+    }
+
+    exchangeData = {
+      rates: derivedRates,
+      isLive: true // Considered Live as it comes from the sheet
+    };
 
     // Phase 2: Fetch Stocks (Depends on Assets)
     if (assets.length > 0) {
