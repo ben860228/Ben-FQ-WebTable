@@ -44,7 +44,8 @@ export async function fetchAssets(): Promise<Asset[]> {
         Quantity: parseNumber(row.get('Quantity')),
         Currency: row.get('Currency') || 'TWD',
         Location: row.get('Location'),
-        Note: row.get('Note')
+        Note: row.get('Note'),
+        Unit_Price: parseNumber(row.get('Unit_Price'))
     }));
 }
 

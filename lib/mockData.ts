@@ -27,7 +27,7 @@ export const CATEGORY_MAPPING: Record<string, string> = {
 
 // Start Helper: Safe Rate Access
 function getRate(currency: string, rates: ExchangeRates): number {
-    return (rates as Record<string, number>)[currency] || 1;
+    return (rates as unknown as Record<string, number>)[currency] || 1;
 }
 
 export function getLivePrice(assetName: string, currency: string, priceMap: Record<string, number> = {}): number {

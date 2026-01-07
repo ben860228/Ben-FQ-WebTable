@@ -12,6 +12,7 @@ export interface Asset {
     Currency: string; // Changed from Currency type to string to be safe with incoming data
     Location?: string;
     Note?: string;
+    Unit_Price?: number; // Fetched from Google Sheet
 }
 
 export interface RecurringItem {

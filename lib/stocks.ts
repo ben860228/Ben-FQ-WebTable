@@ -37,60 +37,42 @@ export interface StockData {
 
 // Internal Uncached Fetcher
 async function fetchStocksInternal(assets: Asset[]): Promise<StockData> {
-    console.log('[Stocks] Fetching from Yahoo API...'); // Log to server terminal
-    const uniqueSymbols = new Set<string>();
-    const missingMapAssets: string[] = [];
+    console.log('[Stocks] Fetching from Google Sheet data...');
+
+    if (!assets || assets.length === 0) {
+        return { prices: {}, status: 'OFFLINE', error: 'No assets provided' };
+    }
+
+    const prices: Record<string, number> = {};
+    let foundPrices = 0;
 
     assets.forEach(a => {
-        if (TICKER_MAP[a.Name]) {
-            uniqueSymbols.add(TICKER_MAP[a.Name]);
-        }
-        else if (TICKER_MAP[a.Name.toUpperCase()]) {
-            uniqueSymbols.add(TICKER_MAP[a.Name.toUpperCase()]);
-        }
-        else if (a.Category === 'Stock' || a.Category === 'ETF' || a.Category === 'Crypto') {
-            missingMapAssets.push(a.Name);
+        // Use Unit_Price if available
+        if (a.Unit_Price !== undefined && a.Unit_Price !== null) {
+            prices[a.Name] = a.Unit_Price;
+
+            // Still populate Ticker Map keys if they exist in the map, 
+            // incase the frontend looks up by Ticker Map keys (though currently it seems to look up by Name).
+            // Actually, looking at getLivePrice in mockData.ts (which we haven't seen but usage suggests),
+            // it likely looks up by Name primarily.
+            // But let's check TICKER_MAP for backward compat or just in case.
+            if (TICKER_MAP[a.Name]) {
+                prices[TICKER_MAP[a.Name]] = a.Unit_Price;
+            }
+            if (TICKER_MAP[a.Name.toUpperCase()]) {
+                prices[TICKER_MAP[a.Name.toUpperCase()]] = a.Unit_Price;
+            }
+
+            foundPrices++;
         }
     });
 
-    if (uniqueSymbols.size === 0) {
-        const msg = missingMapAssets.length > 0
-            ? `No mapped symbols found. Unmapped: ${missingMapAssets.slice(0, 3).join(', ')}...`
-            : 'No stock assets found.';
-        return { prices: {}, status: 'OFFLINE', error: msg };
+    if (foundPrices === 0) {
+        return { prices: {}, status: 'OFFLINE', error: 'No Unit_Price found in assets' };
     }
 
-    const symbols = Array.from(uniqueSymbols);
-
-    try {
-        const result = await yf.quote(symbols);
-        const resultArray = Array.isArray(result) ? result : [result];
-
-        if (!resultArray || resultArray.length === 0) {
-            return { prices: {}, status: 'OFFLINE', error: 'API returned no data' };
-        }
-
-        const prices: Record<string, number> = {};
-
-        resultArray.forEach((q: any) => {
-            const price = q.regularMarketPrice || q.postMarketPrice;
-            if (price) {
-                prices[q.symbol] = price;
-                Object.entries(TICKER_MAP).forEach(([userKey, ticker]) => {
-                    if (ticker === q.symbol) {
-                        prices[userKey] = price;
-                    }
-                });
-            }
-        });
-
-        console.log('[Stocks] Fetch Success.');
-        return { prices, status: 'LIVE' };
-
-    } catch (error: any) {
-        console.error('Stock API Fetch Failed:', error.message);
-        return { prices: {}, status: 'OFFLINE', error: error.message || 'Library Error' };
-    }
+    console.log(`[Stocks] Extraction Success. Found prices for ${foundPrices} items.`);
+    return { prices, status: 'LIVE' };
 }
 
 // Exported Cached Wrapper
