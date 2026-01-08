@@ -25,7 +25,7 @@ async function getDoc() {
             const serviceAccountAuth = new JWT({
                 email: SERVICE_ACCOUNT_EMAIL,
                 key: PRIVATE_KEY,
-                scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+                scopes: ['https://www.googleapis.com/auth/spreadsheets'],
             });
             const doc = new GoogleSpreadsheet(SHEET_ID, serviceAccountAuth);
             await doc.loadInfo();
@@ -66,6 +66,56 @@ export async function fetchAssets(): Promise<Asset[]> {
         Unit_Price: parseNumber(row.get('Unit_Price')),
         Real_Estate_Connect: row.get('Real_Estate_Connect') || row.get('Real_Estate_Connet') // Handle potential typo in CSV
     }));
+}
+
+export async function updateAssetsInSheet(updates: { id: string; quantity: number }[]) {
+    const doc = await getDoc();
+    if (!doc) throw new Error("Google Doc not loaded");
+
+    const sheet = doc.sheetsByTitle['Assets_Inventory'] || doc.sheetsByIndex[0];
+    const rows = await sheet.getRows();
+    let updatedCount = 0;
+
+    for (const update of updates) {
+        const row = rows.find(r => r.get('ID') === update.id);
+        if (row) {
+            row.set('Quantity', update.quantity.toString());
+            await row.save(); // Save individually or we can save later. Google-spreadsheet v4 requires save() on row.
+            updatedCount++;
+        }
+    }
+    return updatedCount;
+}
+
+import { HistoryRecord } from './types';
+
+export async function appendHistoryToSheet(records: HistoryRecord[]) {
+    const doc = await getDoc();
+    if (!doc) throw new Error("Google Doc not loaded");
+
+    let sheet = doc.sheetsByTitle['(SYS_AUTO)Liquidity_History'];
+    if (!sheet) {
+        // Try creating it if it doesn't exist? Or just fail. 
+        // User provided CSV suggests it might be manually created, but let's try to load it by title.
+        // If fail, we can try creating it.
+        console.log("(SYS_AUTO)Liquidity_History sheet not found, attempting to create...");
+        sheet = await doc.addSheet({ title: '(SYS_AUTO)Liquidity_History' });
+        await sheet.setHeaderRow(['Date', 'Asset_ID', 'Name', 'Category', 'Type', 'Value', 'Unit', 'Unit_Price', 'Logged_At']);
+    }
+
+    const rowsToAdd = records.map(record => ({
+        Date: record.Date,
+        Asset_ID: record.Asset_ID,
+        Name: record.Name,
+        Category: record.Category,
+        Type: record.Type,
+        Value: record.Value,
+        Unit: record.Unit,
+        Unit_Price: record.Unit_Price ?? 0,
+        Logged_At: record.Logged_At || new Date().toISOString()
+    }));
+
+    await sheet.addRows(rowsToAdd);
 }
 
 export async function fetchRecurringItems(): Promise<RecurringItem[]> {
