@@ -2,7 +2,7 @@
 
 import { Asset } from '@/lib/types';
 import { useMemo } from 'react';
-import { useLivePrices } from '@/hooks/useLivePrices';
+// import { useLivePrices } from '@/hooks/useLivePrices';
 import { ResponsiveContainer, Treemap, Tooltip } from 'recharts';
 
 interface AssetTreemapContentProps {
@@ -75,24 +75,37 @@ const CustomizedContent = (props: any) => {
 };
 
 export default function AssetTreemapContent({ assets, categoryMap = {} }: AssetTreemapContentProps) {
-    const { prices, getPrice } = useLivePrices(assets);
-
     const data = useMemo(() => {
         const leafNodes = assets.map(asset => {
-            let val = (asset.Quantity || 0) * getPrice(asset.Name, asset.Currency);
+            // Use Unit_Price directly from Google Sheet data
+            // Default to 1 if missing to avoid zero-area in treemap (though we handle val<=0 later)
+            // If Unit_Price is missing, it implies 0 or not set.
+            const unitPrice = asset.Unit_Price ?? 0;
 
-            // Hack for currency
+            let val = (asset.Quantity || 0) * unitPrice;
+
+            // Hack for currency is likely no longer needed if Unit_Price is already in TWD (exchange rate applied)
+            // BUT: If Unit_Price is the *asset price* in *original currency*, we might still need conversion?
+            // "Unit_Price" in Asset Sheet usually means "Current Price" in Asset Currency.
+            // Converting to TWD typically happens in `calculateNetWorth` or similar. 
+            // In the previous Code: `getPrice` returned `prices[name].price` OR `mockData`.
+            // The `mockData` or new logic usually returns raw price?
+            // Actually, `Asset` interface in `types.ts` says `Unit_Price?: number; // Fetched from Google Sheet`.
+            // In `lib/stocks.ts`: `prices[a.Name] = a.Unit_Price`.
+
+            // Let's assume Unit_Price is properly set to the value we want (e.g. Exchange Rate for Fiat, Share Price for Stock).
+            // However, we still need to handle Currency conversion for display validation if logic expects TWD.
+            // The old code did:
             if (asset.Currency === 'USD') val *= 32.5;
             if (asset.Currency === 'JPY') val *= 0.22;
 
             // Ensure positive value for Treemap area
             if (val <= 0) val = 1;
 
-            const liveData = prices[asset.Name];
             return {
                 name: asset.Name,
                 value: val,
-                change: liveData?.changePercent,
+                change: 0, // No live change data available from Sheet
                 Category: asset.Category
             };
         }).sort((a, b) => b.value - a.value);
@@ -102,7 +115,7 @@ export default function AssetTreemapContent({ assets, categoryMap = {} }: AssetT
             name: 'Root',
             children: leafNodes
         }];
-    }, [assets, prices, getPrice]);
+    }, [assets]);
 
     // Check if we have leaf nodes
     const hasData = data && data.length > 0 && data[0].children && data[0].children.length > 0;
@@ -149,7 +162,7 @@ export default function AssetTreemapContent({ assets, categoryMap = {} }: AssetT
                     <div className="text-[10px] text-slate-600 font-mono bg-slate-900 p-2 rounded max-w-full overflow-auto text-left">
                         DEBUG:
                         Asset Count: {assets?.length || 0}
-                        Prices Count: {Object.keys(prices).length}
+                        {/* Prices Count: {Object.keys(prices).length} */}
                         Data Structure: {JSON.stringify(data?.[0]?.children?.length || 'Empty')}
                     </div>
                 </div>

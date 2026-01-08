@@ -15,21 +15,27 @@ export default function LiquidityWidget({ liquidCash, status }: LiquidityWidgetP
     const isHealthy = !status.hasCrisis;
 
     return (
-        <div className={`glass-card rounded-[2rem] p-8 h-full flex flex-col justify-between relative overflow-hidden transition-all duration-500 ${isHealthy ? 'border-emerald-500/20' : 'border-red-500/20'}`}>
-            <div className="flex justify-between items-start z-10">
-                <div>
-                    <h3 className="text-sm font-medium text-slate-400 mb-1">流動性 (Liquidity)</h3>
-                    <p className={`text-xl font-bold ${isHealthy ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {isHealthy ? '健康 (Healthy)' : '注意 (Attention)'}
-                    </p>
-                </div>
-                <div className={`p-2 rounded-xl ${isHealthy ? 'bg-emerald-500/10' : 'bg-red-500/10'}`}>
+        <div className={`glass-card rounded-[2rem] p-5 h-full flex flex-col justify-between relative overflow-hidden transition-all duration-500 ${isHealthy ? 'border-emerald-500/20' : 'border-red-500/20'}`}>
+            {/* Header Row */}
+            <div className="flex justify-between items-center z-10 mb-2">
+                <h3 className="text-sm font-medium text-slate-400">流動性 (Liquidity)</h3>
+                <div className={`p-2 rounded-2xl ${isHealthy ? 'bg-emerald-500/10' : 'bg-red-500/10'}`}>
                     {isHealthy ? (
-                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                     ) : (
                         <AlertTriangle className="h-5 w-5 text-red-500 animate-pulse" />
                     )}
                 </div>
+            </div>
+
+            {/* Status & Definition */}
+            <div className="flex flex-col z-10">
+                <p className={`text-lg font-bold ${isHealthy ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {isHealthy ? '健康 (Healthy)' : '注意 (Attention)'}
+                </p>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                    健康定義: 可用現金 &gt; 下一筆重大支出
+                </p>
             </div>
 
             <div className="mt-4 z-10">
