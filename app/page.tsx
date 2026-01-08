@@ -119,8 +119,9 @@ export default async function Home() {
   const { prices: stockPrices, status: stockStatus, error: stockError } = stockData;
 
   const totalNetWorth = calculateNetWorth(assets, rates, stockPrices);
-  // Pass insurance map and rates to calculation
-  const cashFlowData = calculateCashFlow(recurringItems, totalNetWorth, insuranceDetailsMap, rates);
+  // 2026 Calendar Year View
+  const targetYear = 2026;
+  const cashFlowData = calculateCashFlow(recurringItems, totalNetWorth, insuranceDetailsMap, rates, oneOffEvents, targetYear);
 
   const allocationData = calculateAllocation(assets, rates, stockPrices);
   const liquidityStatus = checkLiquidity(assets, recurringItems, oneOffEvents, rates, stockPrices);
@@ -181,10 +182,18 @@ export default async function Home() {
       <main className="space-y-8">
 
         {/* 1. Top Section: Critical KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 h-auto lg:h-[240px]">
-          <NetWorthCard totalNetWorth={totalNetWorth} />
-          <LiquidityWidget liquidCash={liquidCash} status={liquidityStatus} event={nextEvent} />
-          <TimelineAlert nextEvent={nextEvent || { Name: 'No Events', Date: new Date().toISOString() }} />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 h-auto lg:h-[180px]">
+          <div className="lg:col-span-4">
+            <NetWorthCard totalNetWorth={totalNetWorth} />
+          </div>
+          <div className="lg:col-span-3">
+            <LiquidityWidget liquidCash={liquidCash} status={liquidityStatus} event={nextEvent} />
+          </div>
+          <div className="lg:col-span-5">
+            <TimelineAlert
+              events={oneOffEvents.filter(e => new Date(e.Date) > new Date()).sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime())}
+            />
+          </div>
         </div>
 
         {/* 2. Main Visuals: Cash Flow & Expense */}

@@ -7,12 +7,13 @@ const yf = new YahooFinance({
         info: (...args) => console.log(...args),
         warn: (...args) => console.warn(...args),
         error: (...args) => console.error(...args),
+        dir: (...args: any[]) => console.dir(args), // Added to satisfy Logger interface
         debug: (...args) => { },
     }
 });
 
 // Suppress notices
-yf.suppressNotices(['yahooSurvey']);
+// yf.suppressNotices(['yahooSurvey']);
 
 // IMPORTANT: Set a real browser User Agent
 // Yahoo often blocks default node-fetch agents

@@ -15,50 +15,16 @@ export function useLivePrices(assets: Asset[]) {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        // Disabled to remove redundant Yahoo Finance API calls.
+        // Data should now come exclusively from Google Sheets (server-side).
+        setLoading(false);
+        /* 
         const fetchPrices = async () => {
-            // Filter for assets that likely have market data
-            const targetAssets = assets.filter(a =>
-                a.Type === 'Stock' ||
-                a.Type === 'Crypto' ||
-                a.Name.startsWith('TW-') ||
-                a.Name.startsWith('US-') ||
-                a.Name.includes('-')
-            );
-
-            if (targetAssets.length === 0) {
-                setLoading(false);
-                return;
-            }
-
-            const symbols = Array.from(new Set(targetAssets.map(a => a.Name))).join(',');
-
-            try {
-                const res = await fetch(`/api/quotes?symbols=${encodeURIComponent(symbols)}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setPrices(data);
-                    setError(null);
-                } else {
-                    // Try parsing JSON error
-                    try {
-                        const errJson = await res.json();
-                        setError(errJson.details || errJson.error || `API ${res.status}`);
-                    } catch {
-                        setError(`API ${res.status}`);
-                    }
-                }
-            } catch (error: any) {
-                console.error("Failed to fetch live prices", error);
-                setError(error.message || 'Fetch Failed');
-            } finally {
-                setLoading(false);
-            }
+             // ... existing logic ...
         };
 
         fetchPrices();
-        // No polling, fetch once on mount/assets change
-        // const interval = setInterval(fetchPrices, 300000); 
-        // return () => clearInterval(interval);
+        */
     }, [assets]);
 
     // Helper to get price (Live > Mock)
