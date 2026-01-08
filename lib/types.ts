@@ -63,3 +63,24 @@ export interface InsuranceDetail {
     Calculation_SAV?: number; // Pre-calculated Savings
     Calculation_WIN?: number; // Pre-calculated Gain
 }
+
+export interface HistoryRecord {
+    Date: string;
+    Asset_ID: string;
+    Name: string;
+    Category: string;
+    Type: 'Balance_Update' | 'Holding_Update';
+    Value: number;
+    Unit: string;
+    Unit_Price?: number;
+    Logged_At?: string;
+}
+
+export interface AssetUpdate {
+    id: string;
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    category: string; // e.g., 'Bank', 'Stock'
+    currency: string;
+}

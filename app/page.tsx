@@ -12,6 +12,7 @@ import CashHoldings from '@/components/dashboard/CashHoldings';
 import ExpenseBreakdown from '@/components/dashboard/ExpenseBreakdown';
 import AssetTreemap from '@/components/dashboard/AssetTreemap';
 import DebtDashboard from '@/components/dashboard/DebtDashboard';
+import DashboardHeaderActions from '@/components/dashboard/DashboardHeaderActions';
 
 import {
   calculateNetWorth,
@@ -266,7 +267,7 @@ export default async function Home() {
 
   // 4. Split Assets (Logic)
   const cashAssets = assets.filter(a => ['Cash', 'Fiat', 'Deposit'].includes(a.Category) || a.Type === 'Fiat');
-  const investAssets = assets.filter(a => !['Cash', 'Fiat', 'Deposit'].includes(a.Category) && a.Type !== 'Fiat');
+  const investAssets = assets.filter(a => !['Cash', 'Fiat', 'Deposit'].includes(a.Category) && a.Type !== 'Fiat' && a.Category !== 'Real Estate' && a.Type !== 'Real Estate');
 
   // 5. Lookups per User Request
   const r33Name = recurringItems.find(i => i.ID === 'R33')?.Name;
@@ -281,6 +282,7 @@ export default async function Home() {
           <p className="text-slate-400 mt-2">歡迎回來，Ben</p>
         </div>
         <div className="flex gap-4 items-center">
+
 
           {/* Status Indicators */}
           <div className="flex items-center gap-3">
@@ -304,12 +306,7 @@ export default async function Home() {
             </div>
           </div>
 
-          <button className="p-3 rounded-full bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-emerald-500/50 transition-colors">
-            <Bell className="h-5 w-5" />
-          </button>
-          <button className="p-3 rounded-full bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-emerald-500/50 transition-colors">
-            <Settings className="h-5 w-5" />
-          </button>
+          <DashboardHeaderActions assets={assets} rates={rates} stockPrices={stockPrices} />
         </div>
       </header>
 
