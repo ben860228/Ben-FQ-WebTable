@@ -37,6 +37,7 @@ export interface OneOffEvent {
     Date: string; // Renamed from Due_Date to match Sheet logic
     Type: CashFlowType; // Added Type (Income/Expense)
     Amount: number;
+    Category?: string; // Added for Asset Logic (e.g. 'House')
     Status?: EventStatus;
     Note?: string;
 }

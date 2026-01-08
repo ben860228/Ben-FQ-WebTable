@@ -95,6 +95,7 @@ export async function fetchOneOffEvents(): Promise<OneOffEvent[]> {
         Name: row.get('Name') || 'Unnamed Event',
         Amount: parseNumber(row.get('Amount')),
         Date: row.get('Due_Date') || row.get('Date') || '', // Modified to matching CSV header
+        Category: row.get('Category') || '',
         Note: row.get('Note')
     }));
 }

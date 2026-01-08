@@ -16,7 +16,9 @@ import {
   calculateNetWorth,
   calculateCashFlow,
   calculateAllocation,
-  checkLiquidity
+  checkLiquidity,
+  calculateFixedAssets,
+  calculateLiquidBreakdown
 } from '@/lib/financial-logic';
 import {
   fetchAssets,
@@ -118,10 +120,30 @@ export default async function Home() {
   const { rates, isLive } = exchangeData;
   const { prices: stockPrices, status: stockStatus, error: stockError } = stockData;
 
-  const totalNetWorth = calculateNetWorth(assets, rates, stockPrices);
+  // 3. Financial Calculations
+  const liquidBreakdown = calculateLiquidBreakdown(assets, rates, stockPrices); // New Breakdown
+  const liquidNetWorth = liquidBreakdown.total;
+  const fixedAssets = calculateFixedAssets(oneOffEvents, insuranceDetailsMap, rates); // Fixed Assets (Already detailed)
+
+  // 3.1 Calculate Liability (R33)
+  const today = new Date();
+  const sortedDebt = [...debtR33].sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime());
+  const currentDebtEntry = sortedDebt.filter(d => new Date(d.Date) <= today).pop() || sortedDebt[0]; // Last entry on or before today
+  const totalLiability = currentDebtEntry?.Balance || 0;
+
+  // Net Worth = Assets - Liabilities
+  const totalNetWorth = liquidNetWorth + fixedAssets.total - totalLiability;
+
   // 2026 Calendar Year View
   const targetYear = 2026;
-  const cashFlowData = calculateCashFlow(recurringItems, totalNetWorth, insuranceDetailsMap, rates, oneOffEvents, targetYear);
+  const cashFlowData = calculateCashFlow(
+    recurringItems,
+    totalNetWorth, // Correctly passing the debt-adjusted Net Worth
+    insuranceDetailsMap,
+    rates,
+    oneOffEvents,
+    targetYear
+  );
 
   const allocationData = calculateAllocation(assets, rates, stockPrices);
   const liquidityStatus = checkLiquidity(assets, recurringItems, oneOffEvents, rates, stockPrices);
@@ -138,6 +160,8 @@ export default async function Home() {
 
   // 5. Lookups per User Request
   const r33Name = recurringItems.find(i => i.ID === 'R33')?.Name;
+  const r09Name = recurringItems.find(i => i.ID === 'R09')?.Name || 'R09 (Global)';
+  const r10Name = recurringItems.find(i => i.ID === 'R10')?.Name || 'R10 (Chubb)';
 
   return (
     <div className="min-h-screen p-8 pb-20 sm:p-12 font-[family-name:var(--font-geist-sans)] bg-slate-950">
@@ -182,14 +206,31 @@ export default async function Home() {
       <main className="space-y-8">
 
         {/* 1. Top Section: Critical KPIs */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 h-auto lg:h-[180px]">
-          <div className="lg:col-span-4">
-            <NetWorthCard totalNetWorth={totalNetWorth} />
+        {/* Adjusted Grid: Custom fraction layout for perfect balance 2.6fr - 5fr - 4.4fr */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[2.6fr_5fr_4.4fr] gap-6 h-auto">
+          <div className="lg:col-span-1">
+            <NetWorthCard
+              totalNetWorth={totalNetWorth}
+              totalLiability={totalLiability}
+              liabilityName={r33Name}
+            />
           </div>
-          <div className="lg:col-span-3">
-            <LiquidityWidget liquidCash={liquidCash} status={liquidityStatus} event={nextEvent} />
+          <div className="lg:col-span-1">
+            <LiquidityWidget
+              liquidCash={liquidCash}
+              status={liquidityStatus}
+              event={nextEvent}
+              breakdown={{
+                liquid: liquidBreakdown,
+                fixed: {
+                  ...fixedAssets,
+                  r09Name,
+                  r10Name
+                }
+              }}
+            />
           </div>
-          <div className="lg:col-span-5">
+          <div className="md:col-span-2 lg:col-span-1">
             <TimelineAlert
               events={oneOffEvents.filter(e => new Date(e.Date) > new Date()).sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime())}
             />
@@ -197,13 +238,13 @@ export default async function Home() {
         </div>
 
         {/* 2. Main Visuals: Cash Flow & Expense */}
-        {/* Enforce minimum height for ResponsiveContainer */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[400px]">
-          <div className="rounded-[2rem] h-[400px]">
+        {/* Grid adjusted to 2:1 ratio (col-span-2 vs col-span-1) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[400px]">
+          <div className="lg:col-span-2 rounded-[2rem] h-[400px]">
             {/* Passed data contains isConverted flags */}
             <CashFlowChart data={cashFlowData} />
           </div>
-          <div className="rounded-[2rem] h-[400px]">
+          <div className="lg:col-span-1 rounded-[2rem] h-[400px]">
             <ExpenseBreakdown items={recurringItems} categoryMap={categoryMap} />
           </div>
         </div>

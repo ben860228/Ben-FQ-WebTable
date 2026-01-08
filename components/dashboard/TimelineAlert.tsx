@@ -41,7 +41,7 @@ export default function TimelineAlert({ events }: TimelineAlertProps) {
             {/* Left: Master Detail View (65%) */}
             {/* Left: Master Detail View (65%) */}
             <div className="flex-1 flex flex-col z-10 min-w-0 mr-2">
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-4 h-8">
                     <h3 className="text-sm font-medium text-slate-400">即將到來 (Next Event)</h3>
                     <div className="bg-amber-500/10 p-2 rounded-2xl">
                         <AlarmClock className="h-4 w-4 text-amber-500" />
@@ -53,7 +53,7 @@ export default function TimelineAlert({ events }: TimelineAlertProps) {
                         {current.Name}
                     </h2>
 
-                    <div className="flex items-end gap-x-6">
+                    <div className="flex items-baseline gap-x-4">
                         <div className="flex items-baseline gap-1">
                             <span className="text-4xl font-bold text-white font-[family-name:var(--font-share-tech-mono)]">
                                 {daysRemaining}
@@ -61,11 +61,11 @@ export default function TimelineAlert({ events }: TimelineAlertProps) {
                             <span className="text-xs text-slate-500">Days</span>
                         </div>
 
-                        <div className="flex flex-col gap-1 pb-1">
-                            <div className="flex items-center gap-3 text-sm text-slate-300 font-mono">
+                        <div className="flex flex-col">
+                            <div className="flex items-baseline gap-2 text-sm text-slate-300">
                                 <span>{new Date(current.Date).toLocaleDateString()}</span>
                                 <span className="text-slate-600">|</span>
-                                <span>${current.Amount?.toLocaleString() || '0'}</span>
+                                <span className="font-bold text-white">${current.Amount?.toLocaleString() || '0'}</span>
                             </div>
                             <div className="text-xs text-slate-500 line-clamp-1" title={current.Note}>
                                 {current.Note || 'No notes'}
