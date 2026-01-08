@@ -2,6 +2,7 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { useState, useEffect } from 'react';
+import { PieChart as PieChartIcon } from 'lucide-react';
 
 interface AssetAllocationProps {
     data: {
@@ -10,9 +11,17 @@ interface AssetAllocationProps {
         color: string;
         details?: { name: string; value: number }[];
     }[];
+    title?: string;
+    subTitle?: string;
+    icon?: React.ReactNode;
 }
 
-export default function AssetAllocation({ data }: AssetAllocationProps) {
+export default function AssetAllocation({
+    data,
+    title = "資產配置 (Allocation)",
+    subTitle = "流動資產組成",
+    icon
+}: AssetAllocationProps) {
     const totalValue = data.reduce((sum, item) => sum + item.value, 0);
 
     const [mounted, setMounted] = useState(false);
@@ -21,22 +30,29 @@ export default function AssetAllocation({ data }: AssetAllocationProps) {
         setMounted(true);
     }, []);
 
+    const DisplayIcon = icon || <PieChartIcon className="h-4 w-4 text-indigo-400" />;
+
     return (
-        <div className="glass-card rounded-[2rem] p-8 h-full flex flex-col overflow-visible">
-            <div className="mb-6">
-                <h3 className="text-sm font-medium text-slate-400">資產配置 (Allocation)</h3>
-                <p className="text-2xl font-bold text-white mt-1">類別占比</p>
+        <div className="glass-card rounded-[2rem] p-5 h-full flex flex-col overflow-hidden bg-slate-950 border border-slate-800">
+            <div className="mb-2 shrink-0 flex items-center justify-between">
+                <div>
+                    <h3 className="text-xs font-medium text-slate-400">{title}</h3>
+                    <p className="text-xl font-bold text-white mt-0.5">{subTitle}</p>
+                </div>
+                <div className="p-1.5 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
+                    {DisplayIcon}
+                </div>
             </div>
-            <div className="flex-1 w-full min-h-0 relative flex items-center justify-center">
+            <div className="flex-1 w-full min-h-0 relative">
                 {mounted ? (
-                    <ResponsiveContainer width="100%" height="100%" minHeight={200}>
+                    <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                             <Pie
                                 data={data}
                                 cx="50%"
                                 cy="50%"
-                                innerRadius={60}
-                                outerRadius={90}
+                                innerRadius="55%"
+                                outerRadius="75%"
                                 paddingAngle={5}
                                 dataKey="value"
                                 stroke="none"

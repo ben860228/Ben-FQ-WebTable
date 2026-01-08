@@ -1,5 +1,5 @@
 export type Currency = 'TWD' | 'USD' | 'JPY';
-export type AssetType = 'Fiat' | 'Stock' | 'Crypto';
+export type AssetType = 'Fiat' | 'Stock' | 'Crypto' | 'Real Estate' | 'Other';
 export type CashFlowType = 'Income' | 'Expense';
 export type EventStatus = 'Pending' | 'Paid';
 
@@ -12,7 +12,8 @@ export interface Asset {
     Currency: string; // Changed from Currency type to string to be safe with incoming data
     Location?: string;
     Note?: string;
-    Unit_Price?: number; // Fetched from Google Sheet
+    Unit_Price?: number;
+    Real_Estate_Connect?: string; // Links to Recurring_Items/One_Off_Events IDs or Names
 }
 
 export interface RecurringItem {
