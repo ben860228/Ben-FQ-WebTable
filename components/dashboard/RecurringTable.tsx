@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { RecurringItem } from '@/lib/types';
 import { ArrowUpDown, Calendar, RefreshCw, Calculator, Clock } from 'lucide-react';
-import { CATEGORY_MAPPING } from '@/lib/mockData';
+import { getRate } from '@/lib/financial-logic';
 
 interface RecurringTableProps {
     items: RecurringItem[];

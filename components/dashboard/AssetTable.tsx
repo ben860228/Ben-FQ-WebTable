@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Asset } from '@/lib/types';
-import { getLivePrice } from '@/lib/mockData';
+import { getLivePrice, getExchangedValue } from '@/lib/financial-logic';
 
 interface AssetTableProps {
     assets: Asset[];

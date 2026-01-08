@@ -1,10 +1,7 @@
 import { Asset } from './types';
-import YahooFinance from 'yahoo-finance2';
 import { unstable_cache } from 'next/cache';
 
-// In v3, the default export is the Class itself (or behaves like it for instantiation)
-// We must instantiate it to use it.
-const yf = new YahooFinance();
+// Map user asset names to Yahoo Finance Tickers
 
 // Map user asset names to Yahoo Finance Tickers
 const TICKER_MAP: Record<string, string> = {

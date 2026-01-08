@@ -25,9 +25,16 @@ export const CATEGORY_MAPPING: Record<string, string> = {
     'Uncategorized': '未分類'
 };
 
-// Start Helper: Safe Rate Access
-function getRate(currency: string, rates: ExchangeRates): number {
-    return (rates as unknown as Record<string, number>)[currency] || 1;
+// Start Helper: Get Exchange Rate
+export function getRate(assetCurrency: string, rates: ExchangeRates): number {
+    if (assetCurrency === 'USD') return rates.USD;
+    if (assetCurrency === 'JPY') return rates.JPY;
+    return 1;
+}
+
+// Helper: Calculate Exchanged Value
+export function getExchangedValue(baseValue: number, currency: string, rates: ExchangeRates): number {
+    return baseValue * getRate(currency, rates);
 }
 
 export function getLivePrice(assetName: string, currency: string, priceMap: Record<string, number> = {}): number {

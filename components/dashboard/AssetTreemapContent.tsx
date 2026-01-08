@@ -168,19 +168,19 @@ export default function AssetTreemapContent({ assets, categoryMap = {} }: AssetT
                 </div>
             ) : (
                 <div className="w-full h-[300px] relative flex justify-center overflow-hidden">
-                    <Treemap
-                        width={800}
-                        height={300}
-                        data={data}
-                        dataKey="value"
-                        aspectRatio={4 / 3}
-                        stroke="#ffffff"
-                        fill="#334155"
-                        content={<CustomizedContent />}
-                        isAnimationActive={false}
-                    >
-                        <Tooltip wrapperStyle={{ zIndex: 1000 }} content={<CustomTooltip />} />
-                    </Treemap>
+                    <ResponsiveContainer width="100%" height="100%" minHeight={300}>
+                        <Treemap
+                            data={data}
+                            dataKey="value"
+                            aspectRatio={4 / 3}
+                            stroke="#ffffff"
+                            fill="#334155"
+                            content={<CustomizedContent />}
+                            isAnimationActive={false}
+                        >
+                            <Tooltip wrapperStyle={{ zIndex: 1000 }} content={<CustomTooltip />} />
+                        </Treemap>
+                    </ResponsiveContainer>
                 </div>
             )}
         </div>
