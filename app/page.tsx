@@ -17,7 +17,7 @@ import {
   calculateCashFlow,
   calculateAllocation,
   checkLiquidity
-} from '@/lib/mockData';
+} from '@/lib/financial-logic';
 import {
   fetchAssets,
   fetchRecurringItems,
@@ -29,7 +29,7 @@ import {
 import { ExchangeRates } from '@/lib/currency'; // Only Import Type
 import { fetchStockPrices, StockData } from '@/lib/stocks';
 import { Asset, RecurringItem, OneOffEvent, DebtDetail, InsuranceDetail } from '@/lib/types';
-import { CATEGORY_MAPPING as DEFAULT_MAPPING } from '@/lib/mockData';
+import { CATEGORY_MAPPING as DEFAULT_MAPPING } from '@/lib/financial-logic';
 
 export const dynamic = 'force-dynamic';
 
@@ -197,13 +197,13 @@ export default async function Home() {
         </div>
 
         {/* 2. Main Visuals: Cash Flow & Expense */}
-        {/* Changed from fixed h-[400px] to auto to prevent overlap */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-30">
-          <div className="lg:col-span-2 h-[450px]">
+        {/* Enforce minimum height for ResponsiveContainer */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[400px]">
+          <div className="rounded-[2rem] h-[400px]">
             {/* Passed data contains isConverted flags */}
             <CashFlowChart data={cashFlowData} />
           </div>
-          <div className="lg:col-span-1 h-[450px]">
+          <div className="rounded-[2rem] h-[400px]">
             <ExpenseBreakdown items={recurringItems} categoryMap={categoryMap} />
           </div>
         </div>

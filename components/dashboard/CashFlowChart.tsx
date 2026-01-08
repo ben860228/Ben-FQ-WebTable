@@ -109,73 +109,79 @@ export default function CashFlowChart({ data }: CashFlowChartProps) {
                 </div>
             </div>
             <div className="flex-1 w-full min-h-0">
-                <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart
-                        data={data}
-                        barGap={4}
-                        margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                        onClick={handleChartClick}
-                        style={{ cursor: 'pointer' }}
-                    >
-                        <defs>
-                            <linearGradient id="incomeColor" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-                                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                            </linearGradient>
-                            <linearGradient id="expenseColor" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.8} />
-                                <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.2} />
-                        <XAxis
-                            dataKey="monthLabel"
-                            stroke="#475569"
-                            fontSize={12}
-                            axisLine={false}
-                            tickLine={false}
-                            interval={0}
-                            height={50}
-                            tickFormatter={(val) => {
-                                const [month, year] = val.split(' ');
-                                return `${month}\n${year}`;
-                            }}
-                        />
-                        <YAxis
-                            yAxisId="left"
-                            stroke="#475569"
-                            fontSize={12}
-                            tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                            axisLine={false}
-                            tickLine={false}
-                        />
-                        <YAxis
-                            yAxisId="right"
-                            orientation="right"
-                            stroke="#3B82F6"
-                            fontSize={12}
-                            tickFormatter={(value) => `$${(value / 1000000).toFixed(1)}M`}
-                            axisLine={false}
-                            tickLine={false}
-                            domain={['auto', 'auto']}
-                        />
-                        <ReferenceLine y={0} yAxisId="right" stroke="#475569" strokeDasharray="3 3" opacity={0.5} />
-                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-                        <Bar yAxisId="left" dataKey="income" name="收入" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={30} onClick={handleChartClick} style={{ cursor: 'pointer' }} />
-                        <Bar yAxisId="left" dataKey="expense" name="支出" fill="#be123c" radius={[4, 4, 0, 0]} maxBarSize={30} onClick={handleChartClick} style={{ cursor: 'pointer' }} />
-                        <Bar yAxisId="left" dataKey="savings" name="儲蓄" fill="#F59E0B" radius={[4, 4, 0, 0]} maxBarSize={30} onClick={handleChartClick} style={{ cursor: 'pointer' }} />
-                        <Line
-                            yAxisId="right"
-                            type="monotone"
-                            dataKey="projectedNW"
-                            name="預估淨值"
-                            stroke="#3B82F6"
-                            strokeWidth={3}
-                            dot={{ r: 4, fill: "#3B82F6", strokeWidth: 2, stroke: "#fff" }}
-                            activeDot={{ r: 6 }}
-                        />
-                    </ComposedChart>
-                </ResponsiveContainer>
+                {mounted ? (
+                    <ResponsiveContainer width="100%" height="100%" minHeight={200} minWidth={0}>
+                        <ComposedChart
+                            data={data}
+                            barGap={4}
+                            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                            onClick={handleChartClick}
+                            style={{ cursor: 'pointer' }}
+                        >
+                            <defs>
+                                <linearGradient id="incomeColor" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="expenseColor" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.8} />
+                                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} opacity={0.2} />
+                            <XAxis
+                                dataKey="monthLabel"
+                                stroke="#475569"
+                                fontSize={12}
+                                axisLine={false}
+                                tickLine={false}
+                                interval={0}
+                                height={50}
+                                tickFormatter={(val) => {
+                                    const [month, year] = val.split(' ');
+                                    return `${month}\n${year}`;
+                                }}
+                            />
+                            <YAxis
+                                yAxisId="left"
+                                stroke="#475569"
+                                fontSize={12}
+                                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                                axisLine={false}
+                                tickLine={false}
+                            />
+                            <YAxis
+                                yAxisId="right"
+                                orientation="right"
+                                stroke="#3B82F6"
+                                fontSize={12}
+                                tickFormatter={(value) => `$${(value / 1000000).toFixed(1)}M`}
+                                axisLine={false}
+                                tickLine={false}
+                                domain={['auto', 'auto']}
+                            />
+                            <ReferenceLine y={0} yAxisId="right" stroke="#475569" strokeDasharray="3 3" opacity={0.5} />
+                            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                            <Bar yAxisId="left" dataKey="income" name="收入" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={30} onClick={handleChartClick} style={{ cursor: 'pointer' }} />
+                            <Bar yAxisId="left" dataKey="expense" name="支出" fill="#be123c" radius={[4, 4, 0, 0]} maxBarSize={30} onClick={handleChartClick} style={{ cursor: 'pointer' }} />
+                            <Bar yAxisId="left" dataKey="savings" name="儲蓄" fill="#F59E0B" radius={[4, 4, 0, 0]} maxBarSize={30} onClick={handleChartClick} style={{ cursor: 'pointer' }} />
+                            <Line
+                                yAxisId="right"
+                                type="monotone"
+                                dataKey="projectedNW"
+                                name="預估淨值"
+                                stroke="#3B82F6"
+                                strokeWidth={3}
+                                dot={{ r: 4, fill: "#3B82F6", strokeWidth: 2, stroke: "#fff" }}
+                                activeDot={{ r: 6 }}
+                            />
+                        </ComposedChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <div className="animate-pulse bg-slate-800/50 w-full h-full rounded-xl" />
+                    </div>
+                )}
             </div>
 
             {/* Detail Modal - Rendered via Portal */}

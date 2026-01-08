@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Asset } from '@/lib/types';
-import { getLivePrice } from '@/lib/mockData';
+import { getLivePrice } from '@/lib/financial-logic';
 
 export interface PriceData {
     price: number;

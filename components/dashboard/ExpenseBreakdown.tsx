@@ -2,7 +2,7 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, Label } from 'recharts';
 import { RecurringItem } from '@/lib/types';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 interface ExpenseBreakdownProps {
     items: RecurringItem[];
@@ -92,6 +92,12 @@ export default function ExpenseBreakdown({ items, categoryMap = {} }: ExpenseBre
     const totalSavings = data.find(d => d.name === '長期投資/儲蓄')?.value || 0;
     const grandTotal = totalExpense + totalSavings;
 
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
     return (
         <div className="glass-card rounded-[2rem] p-8 h-full flex flex-col border border-slate-800 bg-slate-950 relative">
             <div className="mb-6">
@@ -109,58 +115,64 @@ export default function ExpenseBreakdown({ items, categoryMap = {} }: ExpenseBre
                         <div className="text-xs font-bold text-amber-500">儲蓄: ${(totalSavings / 1000).toFixed(0)}k</div>
                     </div>
 
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie
-                                data={data}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={60}
-                                outerRadius={90}
-                                paddingAngle={2}
-                                dataKey="value"
-                                stroke="none"
-                            >
-                                {data.map((entry, index) => {
-                                    let color = COLORS[index % COLORS.length];
-                                    if (entry.name === '長期投資/儲蓄' || entry.name === 'Savings' || entry.name === 'Invest') {
-                                        color = '#F59E0B'; // Gold/Amber
-                                    }
-                                    return <Cell key={`cell-${index}`} fill={color} />;
-                                })}
-                            </Pie>
-                            <Tooltip
-                                wrapperStyle={{ zIndex: 1000 }}
-                                content={({ active, payload }) => {
-                                    if (active && payload && payload.length) {
-                                        const data = payload[0].payload as any;
-                                        return (
-                                            <div className="bg-slate-900 border border-slate-700 p-3 rounded-lg shadow-xl z-50 min-w-[200px] max-h-[300px] overflow-y-auto">
-                                                <p className="text-white font-medium mb-1 border-b border-slate-700 pb-1">{data.name}</p>
-                                                <p className="text-slate-300 text-sm font-bold">
-                                                    ${Number(data.value).toLocaleString()}
-                                                </p>
-                                                <p className="text-slate-500 text-xs mb-2">
-                                                    {((Number(data.value) / grandTotal) * 100).toFixed(1)}% of Total
-                                                </p>
+                    {mounted ? (
+                        <ResponsiveContainer width="100%" height="100%" minHeight={200}>
+                            <PieChart>
+                                <Pie
+                                    data={data}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={90}
+                                    paddingAngle={2}
+                                    dataKey="value"
+                                    stroke="none"
+                                >
+                                    {data.map((entry, index) => {
+                                        let color = COLORS[index % COLORS.length];
+                                        if (entry.name === '長期投資/儲蓄' || entry.name === 'Savings' || entry.name === 'Invest') {
+                                            color = '#F59E0B'; // Gold/Amber
+                                        }
+                                        return <Cell key={`cell-${index}`} fill={color} />;
+                                    })}
+                                </Pie>
+                                <Tooltip
+                                    wrapperStyle={{ zIndex: 1000 }}
+                                    content={({ active, payload }) => {
+                                        if (active && payload && payload.length) {
+                                            const data = payload[0].payload as any;
+                                            return (
+                                                <div className="bg-slate-900 border border-slate-700 p-3 rounded-lg shadow-xl z-50 min-w-[200px] max-h-[300px] overflow-y-auto">
+                                                    <p className="text-white font-medium mb-1 border-b border-slate-700 pb-1">{data.name}</p>
+                                                    <p className="text-slate-300 text-sm font-bold">
+                                                        ${Number(data.value).toLocaleString()}
+                                                    </p>
+                                                    <p className="text-slate-500 text-xs mb-2">
+                                                        {((Number(data.value) / grandTotal) * 100).toFixed(1)}% of Total
+                                                    </p>
 
-                                                {/* Full Details List */}
-                                                <div className="space-y-1">
-                                                    {data.details.map((item: any, idx: number) => (
-                                                        <div key={idx} className="flex justify-between text-[10px] text-slate-400 border-b border-slate-800/50 last:border-0 py-0.5">
-                                                            <span className="truncate pr-2">{item.name}</span>
-                                                            <span className="font-mono text-slate-300">${Number(item.amount).toLocaleString()}</span>
-                                                        </div>
-                                                    ))}
+                                                    {/* Full Details List */}
+                                                    <div className="space-y-1">
+                                                        {data.details.map((item: any, idx: number) => (
+                                                            <div key={idx} className="flex justify-between text-[10px] text-slate-400 border-b border-slate-800/50 last:border-0 py-0.5">
+                                                                <span className="truncate pr-2">{item.name}</span>
+                                                                <span className="font-mono text-slate-300">${Number(item.amount).toLocaleString()}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        );
-                                    }
-                                    return null;
-                                }}
-                            />
-                        </PieChart>
-                    </ResponsiveContainer>
+                                            );
+                                        }
+                                        return null;
+                                    }}
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                            <div className="w-40 h-40 rounded-full border-4 border-slate-800 border-t-emerald-500 animate-spin" />
+                        </div>
+                    )}
                 </div>
 
                 {/* Right: Custom Legend Details */}
