@@ -79,10 +79,11 @@ export function calculateCashFlow(
     recurringItems: RecurringItem[],
     currentTotalAssets: number = 0,
     insuranceDetails: Record<string, any[]> = {},
-    rates: ExchangeRates
+    rates: ExchangeRates,
+    oneOffEvents: OneOffEvent[] = [],
+    targetYear: number = 2026 // Default to 2026 as per user preference for now
 ) {
-    // Generate future 12 months starting from next month
-    const today = new Date();
+    // Generate Cash Flow for the specific Calendar Year (Jan - Dec)
     const data = [];
     let accumulatedNetWorth = currentTotalAssets;
 
@@ -101,12 +102,14 @@ export function calculateCashFlow(
     const insuranceAssetValues: Record<string, number> = {};
     const relevantInsuranceIds = ['R09', 'R10'];
 
+    // For initial insurance value, use the start of the target year
     relevantInsuranceIds.forEach(id => {
-        insuranceAssetValues[id] = getInsuranceValue(id, today);
+        insuranceAssetValues[id] = getInsuranceValue(id, new Date(targetYear, 0, 1));
     });
 
-    for (let i = 1; i <= 12; i++) {
-        const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+    // Iterate Jan (0) to Dec (11) of the target year
+    for (let month = 0; month < 12; month++) {
+        const d = new Date(targetYear, month, 1);
         const monthLabel = d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
         const monthIndex = d.getMonth() + 1;
 
@@ -233,6 +236,26 @@ export function calculateCashFlow(
                             expenseItems.push({ name: item.Name, amount: Math.round(amount), id: idNum, isConverted });
                         }
                     }
+                }
+            }
+        });
+
+        // --- Process One-Off Events ---
+        oneOffEvents.forEach(event => {
+            const eventDate = new Date(event.Date);
+            // Check if event is in the current month loop (d is 1st of month)
+            if (eventDate.getFullYear() === d.getFullYear() && eventDate.getMonth() === d.getMonth()) {
+                const amount = event.Amount || 0;
+                if (amount === 0) return;
+
+                const name = `${event.Name} (Event)`;
+
+                if (event.Type === 'Income') {
+                    income += amount;
+                    incomeItems.push({ name, amount: Math.round(amount), id: 9999 + data.length, isConverted: false });
+                } else {
+                    expense += amount;
+                    expenseItems.push({ name, amount: Math.round(amount), id: 9999 + data.length, isConverted: false });
                 }
             }
         });

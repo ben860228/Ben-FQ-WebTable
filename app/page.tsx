@@ -119,8 +119,9 @@ export default async function Home() {
   const { prices: stockPrices, status: stockStatus, error: stockError } = stockData;
 
   const totalNetWorth = calculateNetWorth(assets, rates, stockPrices);
-  // Pass insurance map and rates to calculation
-  const cashFlowData = calculateCashFlow(recurringItems, totalNetWorth, insuranceDetailsMap, rates);
+  // 2026 Calendar Year View
+  const targetYear = 2026;
+  const cashFlowData = calculateCashFlow(recurringItems, totalNetWorth, insuranceDetailsMap, rates, oneOffEvents, targetYear);
 
   const allocationData = calculateAllocation(assets, rates, stockPrices);
   const liquidityStatus = checkLiquidity(assets, recurringItems, oneOffEvents, rates, stockPrices);
