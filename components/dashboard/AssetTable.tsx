@@ -3,6 +3,7 @@
 import React from 'react';
 import { Asset } from '@/lib/types';
 import { getLivePrice, getExchangedValue } from '@/lib/financial-logic';
+import { TrendingUp } from 'lucide-react';
 
 interface AssetTableProps {
     assets: Asset[];
@@ -21,22 +22,25 @@ export default function AssetTable({ assets, categoryMap = {}, stockPrices = {},
     }, 0);
 
     return (
-        <div className="glass-card rounded-[2rem] p-8 h-full flex flex-col border border-slate-800 bg-slate-950">
-            <div className="mb-6 flex items-center justify-between">
+        <div className="glass-card rounded-[2rem] p-5 h-full max-h-full flex flex-col border border-slate-800 bg-slate-950 overflow-hidden">
+            <div className="mb-4 flex items-center justify-between">
                 <div>
-                    <h3 className="text-sm font-medium text-slate-400">投資組合 (Investments)</h3>
-                    <p className="text-2xl font-bold text-white mt-1">持倉明細</p>
+                    <h3 className="text-xs font-medium text-slate-400">投資組合 (Investments)</h3>
+                    <p className="text-xl font-bold text-white mt-0.5">持倉明細</p>
+                </div>
+                <div className="p-1.5 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                    <TrendingUp className="h-4 w-4 text-blue-400" />
                 </div>
             </div>
 
-            <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                    <thead>
+            <div className="overflow-x-auto flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-2">
+                <table className="w-full text-left border-collapse relative">
+                    <thead className="sticky top-0 bg-slate-950 z-10 shadow-sm shadow-slate-900/50">
                         <tr className="border-b border-slate-800/60 text-xs text-slate-500 uppercase tracking-wider font-mono">
-                            <th className="pb-4 font-medium pl-0">名稱 (Name)</th>
-                            <th className="pb-4 font-medium text-right">數量 (Qty)</th>
-                            <th className="pb-4 font-medium text-right">市價 (Price)</th>
-                            <th className="pb-4 font-medium text-right">總值 (TWD)</th>
+                            <th className="pb-4 pt-1 font-medium pl-0">名稱 (Name)</th>
+                            <th className="pb-4 pt-1 font-medium text-right">數量 (Qty)</th>
+                            <th className="pb-4 pt-1 font-medium text-right">市價 (Price)</th>
+                            <th className="pb-4 pt-1 font-medium text-right">總值 (TWD)</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/50">
@@ -61,7 +65,6 @@ export default function AssetTable({ assets, categoryMap = {}, stockPrices = {},
                                     </td>
                                     <td className="py-3 text-right">
                                         <div className="font-mono text-slate-200">{Number(asset.Quantity).toLocaleString()}</div>
-                                        <div className="text-xs text-slate-500">{asset.Currency}</div>
                                     </td>
                                     <td className="py-3 text-right font-mono text-slate-200">
                                         {/* Display original currency price */}

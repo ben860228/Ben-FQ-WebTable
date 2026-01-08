@@ -15,13 +15,13 @@ export default function CashHoldings({ assets }: CashHoldingsProps) {
     const sortedAssets = assets;
 
     return (
-        <div className="glass-card rounded-[2rem] p-8 h-full flex flex-col border border-slate-800 bg-slate-950">
-            <div className="flex items-center justify-between mb-6">
+        <div className="glass-card rounded-[2rem] p-5 h-full max-h-full flex flex-col border border-slate-800 bg-slate-950 overflow-hidden">
+            <div className="flex items-center justify-between mb-4">
                 <div>
-                    <h3 className="text-sm font-medium text-slate-400">現金部位 (Cash Holdings)</h3>
-                    <p className="text-2xl font-bold text-white mt-1">帳戶明細</p>
+                    <h3 className="text-xs font-medium text-slate-400">現金部位 (Cash Holdings)</h3>
+                    <p className="text-xl font-bold text-white mt-0.5">帳戶明細</p>
                 </div>
-                <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+                <div className="p-1.5 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
                     <Wallet className="h-4 w-4 text-emerald-400" />
                 </div>
             </div>

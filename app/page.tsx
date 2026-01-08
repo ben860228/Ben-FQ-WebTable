@@ -1,5 +1,6 @@
-import { Bell, Settings, RefreshCw, AlertCircle, CheckCircle, Smartphone } from 'lucide-react';
+import { Bell, Settings, RefreshCw, AlertCircle, CheckCircle, Smartphone, PieChart as PieChartIcon, Home as HomeIcon, FileText } from 'lucide-react';
 
+import FixedAssetCard from '@/components/dashboard/FixedAssetCard';
 import NetWorthCard from '@/components/dashboard/NetWorthCard';
 import CashFlowChart from '@/components/dashboard/CashFlowChart';
 import AssetAllocation from '@/components/dashboard/AssetAllocation';
@@ -44,6 +45,7 @@ export default async function Home() {
 
   // New Data
   let debtR33: DebtDetail[] = [];
+  let debtR34: DebtDetail[] = []; // House Loan
   let insR09: InsuranceDetail[] = [];
   let insR10: InsuranceDetail[] = [];
 
@@ -57,24 +59,26 @@ export default async function Home() {
   let stockData: StockData = { prices: {}, status: 'OFFLINE' };
 
   try {
-    // Phase 1: Fetch Base Data & Currency
-    const [a, r, o, m, d33, i09, i10] = await Promise.all([
-      fetchAssets().catch(e => { console.error('Asset Fetch Error', e); return []; }),
-      fetchRecurringItems().catch(e => { console.error('Recurring Fetch Error', e); return []; }),
-      fetchOneOffEvents().catch(e => { console.error('Event Fetch Error', e); return []; }),
-      fetchCategoryMap().catch(e => { console.error('Map Fetch Error', e); return {}; }),
-      fetchDebtDetails('R33_Debt_Table').catch(e => { console.error('R33 Fetch Error', e); return []; }),
-      fetchInsuranceDetails('R09_Ins_Table').catch(e => { console.error('R09 Fetch Error', e); return []; }),
-      fetchInsuranceDetails('R10_Ins_Table').catch(e => { console.error('R10 Fetch Error', e); return []; })
+    // Parallel Fetching
+    const [fetchedAssets, fetchedRecurring, fetchedEvents, fetchedMap, fetchedR33, fetchedR34, fetchedR09, fetchedR10] = await Promise.all([
+      fetchAssets(),
+      fetchRecurringItems(),
+      fetchOneOffEvents(),
+      fetchCategoryMap(),
+      fetchDebtDetails('R33_Debt_Table'),
+      fetchDebtDetails('R34_Debt_Table'),
+      fetchInsuranceDetails('R09_Ins_Table'),
+      fetchInsuranceDetails('R10_Ins_Table')
     ]);
 
-    assets = a || [];
-    recurringItems = r || [];
-    oneOffEvents = o || [];
-    dynamicMap = m || {};
-    debtR33 = d33 || [];
-    insR09 = i09 || [];
-    insR10 = i10 || [];
+    assets = fetchedAssets;
+    recurringItems = fetchedRecurring;
+    oneOffEvents = fetchedEvents;
+    dynamicMap = fetchedMap;
+    debtR33 = fetchedR33;
+    debtR34 = fetchedR34;
+    insR09 = fetchedR09;
+    insR10 = fetchedR10;
 
     // Logic: Derive Rates from Assets
     // Find Fiat/Cash assets with Currency USD/JPY and get their Unit_Price (which is Exchange Rate to TWD)
@@ -110,20 +114,24 @@ export default async function Home() {
   // Merge Dynamic Map with Default
   const categoryMap = { ...DEFAULT_MAPPING, ...dynamicMap };
 
-  // Prepare Insurance Map for Calculation
-  const insuranceDetailsMap: Record<string, InsuranceDetail[]> = {
-    'R09': insR09,
-    'R10': insR10
-  };
-
   // 2. Logic / Calculations
   const { rates, isLive } = exchangeData;
   const { prices: stockPrices, status: stockStatus, error: stockError } = stockData;
 
+  // Prepare Maps
+  const debtDetailsMap: Record<string, DebtDetail[]> = {
+    'R33': debtR33,
+    'R34': debtR34  // Map ID 'R34' to the data fetched from 'R34_Debt_Table'
+  };
+  const insuranceDetailsMap: Record<string, InsuranceDetail[]> = {
+    'R09': insR09, // Map ID 'R09' to the data fetched from 'R09_Ins_Table'
+    'R10': insR10
+  };
+
   // 3. Financial Calculations
   const liquidBreakdown = calculateLiquidBreakdown(assets, rates, stockPrices); // New Breakdown
   const liquidNetWorth = liquidBreakdown.total;
-  const fixedAssets = calculateFixedAssets(oneOffEvents, insuranceDetailsMap, rates); // Fixed Assets (Already detailed)
+  const fixedAssets = calculateFixedAssets(oneOffEvents, insuranceDetailsMap, rates); // Fixed Assets
 
   // 3.1 Calculate Liability (R33)
   const today = new Date();
@@ -145,7 +153,109 @@ export default async function Home() {
     targetYear
   );
 
-  const allocationData = calculateAllocation(assets, rates, stockPrices);
+  // --- Fixed Asset Enrichment Logic ---
+
+  // 1. House Logic
+  const houseAsset = assets.find(a => a.Category === 'Real Estate' || a.Type === 'Real Estate');
+  const houseName = houseAsset ? houseAsset.Name : '自有住宅';
+
+  // Calculate House Total Price
+  // Sum of linked OneOffEvents (Down Pay etc) + Linked Debt Original Loan
+  // Note: fixedAssets.house = Sum of OneOffEvents (Equity Paid so far)
+  // Total Price = Equity Paid + Loan Balance? No.
+  // User says: "Total = Down Payments + Engineering etc + Total Loan"
+  // Actually, fixedAssets.house comes from ONE_OFF_EVENTS filter Category='House'.
+  // If the user entered Down Payments as "House" events, then fixedAssets.house IS the sum of down payments.
+  // So Total Price = fixedAssets.house + Debt.Total_Loan.
+
+  let houseTotalValParam = 0;
+  let houseOwnershipPercent = 0;
+
+  if (houseAsset && houseAsset.Real_Estate_Connect) {
+    const links = houseAsset.Real_Estate_Connect.split(',').map(s => s.trim());
+
+    // Find Linked Debt (R34)
+    const linkedDebtID = links.find(l => l.startsWith('R'));
+    let debtLoanAmount = 0;
+
+    // Look up in debt map using key 'R34' (assuming ID is R34 in sheet)
+    // If we looked up 'R34', we must ensure the key in map is 'R34'.
+    // We populated the map with 'R34': debtR34.
+    if (linkedDebtID && debtDetailsMap[linkedDebtID] && debtDetailsMap[linkedDebtID].length > 0) {
+      debtLoanAmount = debtDetailsMap[linkedDebtID][0].Total_Loan;
+    }
+
+    // Total Price = Equity (Paid) + Loan (Debt) ?
+    // User said: "Should be sum of down/engineering... then add loan total".
+    // fixedAssets.house = Sum of OneOffEvents(House).
+    // So:
+    // Total Price = All Equity (Paid + Unpaid) + Loan (Debt)
+    // User wants ALL linked events (Down payments, Engineering) included, regardless of date.
+    const totalEquityCommitment = oneOffEvents
+      .filter(e => links.includes(e.ID))
+      .reduce((sum, e) => sum + e.Amount, 0);
+
+    houseTotalValParam = totalEquityCommitment + debtLoanAmount;
+
+    if (houseTotalValParam > 0) {
+      // Ownership % based on Paid Equity vs Total Price
+      // OR User might mean "How much of the house do I own?" -> (Paid Equity + Paid Principal) / Total?
+      // Usually "Holding %" for pre-sale means "Equity Paid / Total Equity".
+      // But dashboard shows "Paying...".
+      // Let's keep Ownership = (fixedAssets.house / houseTotalValParam) for now (Paid / Total Price).
+      houseOwnershipPercent = (fixedAssets.house / houseTotalValParam) * 100;
+    }
+  }
+  // Fallback: if calculated is 0, maybe use fixedAssets.house? No, usually houseEquity is partial.
+  // If we can't calculate, leave as 0 or undefined.
+
+  // 2. Insurance Logic (Direct ID Match)
+  const r09Item = recurringItems.find(i => i.ID === 'R09');
+  const r10Item = recurringItems.find(i => i.ID === 'R10');
+
+  const r09Start = insR09.length > 0 ? insR09[0].Date : 'N/A';
+  const r10Start = insR10.length > 0 ? insR10[0].Date : 'N/A';
+
+  // Calculate ROI & Cost (Native Currency)
+  const calculateMetrics = (details: InsuranceDetail[]) => {
+    if (!details || details.length === 0) return { roi: 0, cost: 0 };
+    const today = new Date();
+
+    // 1. Total Cost (Sum of Premiums paid to date)
+    const paidDetails = details.filter(d => new Date(d.Date) <= today);
+    const totalCost = paidDetails.reduce((sum, d) => sum + d.Premium, 0);
+
+    // 2. Current Value (Latest Cash Value)
+    const sorted = [...paidDetails].sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime());
+    const currentEntry = sorted.pop();
+    const currentVal = currentEntry ? currentEntry.Cash_Value : 0;
+
+    const roi = totalCost === 0 ? 0 : ((currentVal - totalCost) / totalCost) * 100;
+    return { roi, cost: totalCost };
+  };
+
+  const { roi: r09ROI, cost: r09Cost } = calculateMetrics(insR09);
+  const { roi: r10ROI, cost: r10Cost } = calculateMetrics(insR10);
+
+  const formatCurrency = (val: number, curr: string) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: curr, maximumFractionDigits: 0 }).format(val);
+
+  const formatPercent = (val: number) =>
+    `${val > 0 ? '+' : ''}${val.toFixed(2)}%`;
+
+  const getFrequencyLabel = (freq: string) => {
+    if (freq === '1') return '年繳';
+    if (freq === '2') return '半年繳';
+    if (freq === '4') return '季繳';
+    if (freq === '12') return '月繳';
+    return '其他';
+  };
+
+  // Filter out Real Estate from Liquid Allocation
+  const liquidAssetsForAllocation = assets.filter(a => a.Category !== 'Real Estate' && a.Type !== 'Real Estate');
+  const allocationData = calculateAllocation(liquidAssetsForAllocation, rates, stockPrices);
+
+  // ------------------------------------  // 2026 Calendar Year View
   const liquidityStatus = checkLiquidity(assets, recurringItems, oneOffEvents, rates, stockPrices);
   const { liquidCash } = liquidityStatus;
 
@@ -258,25 +368,112 @@ export default async function Home() {
         )}
 
         {/* 3. Asset Allocation & Heatmap */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[400px] relative z-20">
-          <div className="lg:col-span-1 h-full">
+        {/* 3. Liquid Assets Detail (Unified Row) */}
+        {/* Layout: Allocation (Left) | Cash (Center) | Investments (Right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[340px]">
+          {/* 3.1 Allocation Donut (3 cols) */}
+          <div className="lg:col-span-3 h-full min-h-0 overflow-hidden">
             <AssetAllocation data={allocationData} />
           </div>
-          <div className="lg:col-span-2 h-full">
-            <AssetTreemap assets={investAssets} categoryMap={categoryMap} />
-          </div>
-        </div>
 
-        {/* 4. Detailed Holdings: Cash List + Invest Table */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
-          <div className="lg:col-span-2 h-[600px]">
+          {/* 3.2 Cash Holdings List (4 cols) */}
+          <div className="lg:col-span-4 h-full min-h-0 overflow-hidden">
             <CashHoldings assets={cashAssets} />
           </div>
-          <div className="lg:col-span-3 h-[600px]">
-            {/* Rates cast to any/Record to satisfy prop type */}
+
+          {/* 3.3 Investment Table (5 cols) */}
+          <div className="lg:col-span-5 h-full min-h-0 overflow-hidden">
             <AssetTable assets={investAssets} categoryMap={categoryMap} stockPrices={stockPrices} rates={rates as unknown as Record<string, number>} />
           </div>
         </div>
+
+        {/* 4. Fixed Assets Section */}
+        {/* Layout: Fixed Composition (3 cols) | House (3 cols) | R09 (3 cols) | R10 (3 cols) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-auto min-h-[360px]">
+          {/* 4.1 Fixed Composition Pie */}
+          <div className="lg:col-span-3 h-full min-h-0 overflow-hidden">
+            <AssetAllocation
+              data={[
+                { name: houseName, value: fixedAssets.house, color: "#8b5cf6" }, // Violet
+                { name: r09Item?.Name || "R09", value: fixedAssets.r09, color: "#ec4899" },    // Pink
+                { name: r10Item?.Name || "R10", value: fixedAssets.r10, color: "#f43f5e" }     // Rose
+              ]}
+              title="固定資產 (Fixed)"
+              subTitle="固定資產組成"
+              icon={<PieChartIcon className="h-4 w-4 text-purple-400" />}
+            />
+          </div>
+
+          {/* 4.2 House */}
+          <div className="lg:col-span-3 h-full min-h-0 overflow-hidden">
+            <FixedAssetCard
+              title="房地產 (Real Estate)"
+              subTitle={houseName}
+              value={fixedAssets.house} // Only Paid Equity
+              icon={<HomeIcon className="w-5 h-5 text-purple-400" />}
+              details={[
+                { label: '簽約總價', value: houseTotalValParam > 0 ? formatCurrency(houseTotalValParam, 'TWD') : 'N/A' },
+                { label: '已付權益', value: formatCurrency(fixedAssets.house, 'TWD') },
+                { label: '持有比例', value: houseOwnershipPercent > 0 ? `${houseOwnershipPercent.toFixed(1)}%` : 'N/A' }
+              ]}
+            />
+          </div>
+
+          {/* 4.3 R09 */}
+          <div className="lg:col-span-3 h-full min-h-0 overflow-hidden">
+            {r09Item && (
+              <FixedAssetCard
+                title="保單資產 (Insurance)"
+                subTitle={r09Item.Name}
+                value={fixedAssets.r09}
+                icon={<FileText className="w-5 h-5 text-pink-400" />}
+                details={[
+                  { label: '目前投報', value: `${r09ROI.toFixed(2)}%`, subText: '含匯差估算' },
+                  { label: '繳費頻率', value: getFrequencyLabel(r09Item.Frequency) },
+                  { label: '本期保費', value: `USD $${r09Item.Amount_Base.toLocaleString()}` },
+                  { label: '合約起始', value: r09Start }
+                ]}
+                investedAmount={{
+                  label: '已投入金額',
+                  value: `USD ${formatCurrency(r09Cost, 'USD')}`
+                }}
+                isConverted={true}
+              />
+            )}
+          </div>
+
+          {/* 4.4 R10 */}
+          <div className="lg:col-span-3 h-full min-h-0 overflow-hidden">
+            {r10Item && (
+              <FixedAssetCard
+                title="保單資產 (Insurance)"
+                subTitle={r10Item.Name}
+                value={fixedAssets.r10}
+                currency="TWD"
+                icon={<FileText className="w-5 h-5 text-purple-400" />}
+                details={[
+                  { label: '目前投報', value: `${r10ROI.toFixed(2)}%` },
+                  { label: '繳費頻率', value: getFrequencyLabel(r10Item.Frequency) },
+                  { label: '本期保費', value: `NT$${r10Item.Amount_Base.toLocaleString()}` },
+                  { label: '合約起始', value: r10Start }
+                ]}
+                investedAmount={{
+                  label: '已投入金額',
+                  value: formatCurrency(r10Cost, 'TWD')
+                }}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* ARCHIVED: Heatmap Block
+           (Temporarily removed as per user request until Google Sheet data is ready)
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[400px] relative z-20">
+             <AssetTreemap assets={investAssets} categoryMap={categoryMap} />
+        </div>
+        */}
+
+
 
         {/* 5. Recurring Items Table (Bottom) */}
         <div>

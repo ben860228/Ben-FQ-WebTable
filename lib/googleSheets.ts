@@ -7,19 +7,37 @@ const SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
 const PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 const SHEET_ID = process.env.GOOGLE_SHEET_ID;
 
+// Module-level cache for the spreadsheet document
+let docPromise: Promise<GoogleSpreadsheet | null> | null = null;
+
 async function getDoc() {
     if (!SERVICE_ACCOUNT_EMAIL || !PRIVATE_KEY || !SHEET_ID) {
         console.warn('Google Sheets Credentials missing');
         return null;
     }
-    const serviceAccountAuth = new JWT({
-        email: SERVICE_ACCOUNT_EMAIL,
-        key: PRIVATE_KEY,
-        scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-    });
-    const doc = new GoogleSpreadsheet(SHEET_ID, serviceAccountAuth);
-    await doc.loadInfo();
-    return doc;
+
+    // Return existing promise if available (Singleton)
+    if (docPromise) return docPromise;
+
+    // Initialize new promise
+    docPromise = (async () => {
+        try {
+            const serviceAccountAuth = new JWT({
+                email: SERVICE_ACCOUNT_EMAIL,
+                key: PRIVATE_KEY,
+                scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+            });
+            const doc = new GoogleSpreadsheet(SHEET_ID, serviceAccountAuth);
+            await doc.loadInfo();
+            return doc;
+        } catch (error) {
+            console.error("Failed to load Google Sheet info:", error);
+            docPromise = null; // Reset cache on failure so we can retry
+            throw error;
+        }
+    })();
+
+    return docPromise;
 }
 
 function parseNumber(val: string | undefined): number {
@@ -45,7 +63,8 @@ export async function fetchAssets(): Promise<Asset[]> {
         Currency: row.get('Currency') || 'TWD',
         Location: row.get('Location'),
         Note: row.get('Note'),
-        Unit_Price: parseNumber(row.get('Unit_Price'))
+        Unit_Price: parseNumber(row.get('Unit_Price')),
+        Real_Estate_Connect: row.get('Real_Estate_Connect') || row.get('Real_Estate_Connet') // Handle potential typo in CSV
     }));
 }
 
@@ -133,7 +152,7 @@ export async function fetchDebtDetails(tableId: string): Promise<DebtDetail[]> {
     console.log(`Fetching Debt Table: ${tableId}`);
     const sheet = doc.sheetsByTitle[tableId];
     if (!sheet) {
-        console.warn(`Debt Sheet ${tableId} not found`);
+        console.warn(`Debt Sheet ${tableId} not found. Available sheets:`, Object.keys(doc.sheetsByTitle));
         return [];
     }
 
@@ -155,15 +174,11 @@ export async function fetchInsuranceDetails(tableId: string): Promise<InsuranceD
     console.log(`Fetching Insurance Table: ${tableId}`);
     const sheet = doc.sheetsByTitle[tableId];
     if (!sheet) {
-        console.warn(`Insurance Sheet ${tableId} not found`);
+        console.warn(`Insurance Sheet ${tableId} not found. Available sheets:`, Object.keys(doc.sheetsByTitle));
         return [];
     }
 
     const rows = await sheet.getRows();
-    console.log(`[DEBUG FETCH] Table ${tableId} loaded ${rows.length} rows.`);
-    if (rows.length > 0) {
-        console.log(`[DEBUG FETCH] ${tableId} Row 1 Date: ${rows[0].get('Payment_Date')}`);
-    }
 
     return rows.map(row => {
         // Fallback logic for Cash Value: Actual > Expected > 0
@@ -174,9 +189,9 @@ export async function fetchInsuranceDetails(tableId: string): Promise<InsuranceD
         return {
             Date: row.get('Payment_Date') || '',
             Premium: parseNumber(row.get('Premium_Total')),
+            Cost: parseNumber(row.get('Insurance_Cost')),
             Cash_Value: cashValue,
             Accumulated_Savings: parseNumber(row.get('Accu_Savings_Amount')),
-            Cost: parseNumber(row.get('Insurance_Cost') || row.get('Expense_Amount')),
             Year: parseInt(row.get('Year')) || 0,
             Calculation_EXP: parseNumber(row.get('Calculation_EXP')),
             Calculation_SAV: parseNumber(row.get('Calculation_SAV')),
