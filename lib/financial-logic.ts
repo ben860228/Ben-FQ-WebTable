@@ -1,5 +1,61 @@
-import { Asset, RecurringItem, OneOffEvent } from './types';
+import { Asset, RecurringItem, OneOffEvent, InsuranceDetail } from './types';
 import { ExchangeRates } from './currency';
+
+export function calculateFixedAssets(
+    oneOffEvents: OneOffEvent[],
+    insuranceDetails: Record<string, InsuranceDetail[]>,
+    rates: ExchangeRates
+) {
+    const today = new Date();
+
+    // 1. House Equity (From One-Off Events)
+    const houseEquity = oneOffEvents
+        .filter(e => e.Category === 'House' && new Date(e.Date) <= today)
+        .reduce((sum, e) => sum + e.Amount, 0);
+
+    // 2. Insurance Cash Value (R09, R10)
+    const getInsuranceValue = (id: string) => {
+        const details = insuranceDetails[id];
+        if (!details || details.length === 0) return 0;
+        // Sort by Date
+        const sorted = [...details].sort((a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime());
+        // Find the latest record *before or on* today
+        // Actually, the sheet often has "Year End" dates.
+        // We usually want the "Current Policy Year" value.
+        // Simple logic: Find the latest record with Date <= Today.
+        // If today < first record, value is 0 (or first record's value? No, 0).
+        let value = 0;
+        for (const d of sorted) {
+            if (new Date(d.Date) <= today) {
+                value = d.Cash_Value;
+            } else {
+                break;
+            }
+        }
+        // If no past record is found (policy just started or data future-dated), maybe check if policy started?
+        // Fallback: if today > sorted[0].Date but no entry?? Logic above covers it.
+        // What if today is before the first "Year End"? Technically Cash Value might be 0 or accumulating.
+        // Let's assume 0 if before first year end in CSV.
+        return value;
+    };
+
+    // R09 (USD) -> Convert to TWD
+    const r09ValueUSD = getInsuranceValue('R09');
+    const r09ValueTWD = r09ValueUSD * getRate('USD', rates);
+
+    // R10 (TWD)
+    const r10ValueTWD = getInsuranceValue('R10');
+
+    const totalFixed = Math.round(houseEquity + r09ValueTWD + r10ValueTWD);
+
+    return {
+        total: totalFixed,
+        house: Math.round(houseEquity),
+        insurance: Math.round(r09ValueTWD + r10ValueTWD),
+        r09: Math.round(r09ValueTWD),
+        r10: Math.round(r10ValueTWD)
+    };
+}
 
 export const CATEGORY_MAPPING: Record<string, string> = {
     'Housing': '居住',
@@ -79,6 +135,40 @@ export function calculateNetWorth(assets: Asset[], rates: ExchangeRates, stockPr
         // Quantity * Price * Rate
         return total + (asset.Quantity * price * rate);
     }, 0);
+}
+
+export function calculateLiquidBreakdown(assets: Asset[], rates: ExchangeRates, stockPrices: Record<string, number> = {}) {
+    let cash = 0;
+    let stock = 0; // Stocks + ETF
+    let crypto = 0;
+    let other = 0;
+
+    assets.forEach(asset => {
+        const rate = getRate(asset.Currency, rates);
+        const price = getLivePrice(asset.Name, asset.Currency, stockPrices);
+        const value = asset.Quantity * price * rate;
+
+        const cat = asset.Category || 'Other';
+        const type = asset.Type || 'Asset';
+
+        if (cat === 'Cash' || type === 'Fiat') {
+            cash += value;
+        } else if (cat === 'Stock' || cat === 'ETF' || type === 'Stock') {
+            stock += value;
+        } else if (cat === 'Crypto' || type === 'Crypto') {
+            crypto += value;
+        } else {
+            other += value; // Alternates, etc.
+        }
+    });
+
+    return {
+        total: Math.round(cash + stock + crypto + other),
+        cash: Math.round(cash),
+        stock: Math.round(stock),
+        crypto: Math.round(crypto),
+        other: Math.round(other)
+    };
 }
 
 // Logic: Generate Cash Flow Data (Monthly)
@@ -256,13 +346,20 @@ export function calculateCashFlow(
                 if (amount === 0) return;
 
                 const name = `${event.Name} (Event)`;
+                const isHouse = event.Category === 'House';
 
                 if (event.Type === 'Income') {
                     income += amount;
                     incomeItems.push({ name, amount: Math.round(amount), id: 9999 + data.length, isConverted: false });
                 } else {
-                    expense += amount;
-                    expenseItems.push({ name, amount: Math.round(amount), id: 9999 + data.length, isConverted: false });
+                    if (isHouse) {
+                        // House Expense -> Treats as Savings (Asset Accumulation)
+                        savings += amount;
+                        savingsItems.push({ name: `${name} (Equity)`, amount: Math.round(amount), id: 9999 + data.length, isConverted: false });
+                    } else {
+                        expense += amount;
+                        expenseItems.push({ name, amount: Math.round(amount), id: 9999 + data.length, isConverted: false });
+                    }
                 }
             }
         });
