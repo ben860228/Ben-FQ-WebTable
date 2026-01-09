@@ -338,11 +338,34 @@ export function calculateCashFlow(
         });
 
         // --- Process One-Off Events ---
+        // --- Process One-Off Events ---
         oneOffEvents.forEach(event => {
-            const eventDate = new Date(event.Date);
-            // Check if event is in the current month loop (d is 1st of month)
-            if (eventDate.getFullYear() === d.getFullYear() && eventDate.getMonth() === d.getMonth()) {
+            // Robust Date Parsing (Handle YYYY-MM-DD or YYYY/MM/DD)
+            // This avoids Timezone shifting issues with new Date()
+            const dateStr = String(event.Date || '').trim();
+            let eventYear = 0;
+            let eventMonth = 0; // 1-based
+
+            if (dateStr.match(/^\d{4}[-/]\d{1,2}[-/]\d{1,2}/)) {
+                const parts = dateStr.split(/[-/]/);
+                eventYear = parseInt(parts[0]);
+                eventMonth = parseInt(parts[1]);
+            } else {
+                // Fallback to Date object
+                const dobj = new Date(event.Date);
+                if (!isNaN(dobj.getTime())) {
+                    eventYear = dobj.getFullYear();
+                    eventMonth = dobj.getMonth() + 1;
+                }
+            }
+
+            // Check if matches current loop (d is 1st of month)
+            // d.getMonth() is 0-based. eventMonth is 1-based.
+            if (eventYear === d.getFullYear() && eventMonth === (d.getMonth() + 1)) {
                 const amount = event.Amount || 0;
+                // Note: We deliberately include Amount=0 if needed, but usually 0 is skipped.
+                // If user says "missing", maybe checking Amount is too strict? 
+                // Let's keep strict check only if 0 implies no-op.
                 if (amount === 0) return;
 
                 const name = `${event.Name} (Event)`;

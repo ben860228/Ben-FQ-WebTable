@@ -30,6 +30,7 @@
 2.  **現金流預測 (Cash Flow)**: 基於週期性收支與一次性事件，預測未來的現金水位與淨值走勢。
 3.  **流動性監控 (Liquidity)**: 比較現金資產與即將到來的重大支出，提出預警。
 4.  **資產配置 (Allocation)**: 以樹狀圖 (Treemap) 視覺化各類資產佔比。
+5.  **進階預算分析 (Budget Analytics)**: 每日支出建議 (Smart Daily Forecast) 與動態滾動預算 (Rolling Budget)，即時監控月度開銷健康度。
 
 ## 開發指南
 
