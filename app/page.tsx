@@ -13,6 +13,7 @@ import ExpenseBreakdown from '@/components/dashboard/ExpenseBreakdown';
 import AssetTreemap from '@/components/dashboard/AssetTreemap';
 import DebtDashboard from '@/components/dashboard/DebtDashboard';
 import DashboardHeaderActions from '@/components/dashboard/DashboardHeaderActions';
+import { BudgetTracker } from '@/components/dashboard/BudgetTracker';
 
 import {
   calculateNetWorth,
@@ -28,11 +29,12 @@ import {
   fetchOneOffEvents,
   fetchCategoryMap,
   fetchDebtDetails,
-  fetchInsuranceDetails
+  fetchInsuranceDetails,
+  fetchExpenseHistory
 } from '@/lib/googleSheets';
 import { ExchangeRates } from '@/lib/currency'; // Only Import Type
 import { fetchStockPrices, StockData } from '@/lib/stocks';
-import { Asset, RecurringItem, OneOffEvent, DebtDetail, InsuranceDetail } from '@/lib/types';
+import { Asset, RecurringItem, OneOffEvent, DebtDetail, InsuranceDetail, ExpenseHistoryItem } from '@/lib/types';
 import { CATEGORY_MAPPING as DEFAULT_MAPPING } from '@/lib/financial-logic';
 
 export const dynamic = 'force-dynamic';
@@ -49,6 +51,7 @@ export default async function Home() {
   let debtR34: DebtDetail[] = []; // House Loan
   let insR09: InsuranceDetail[] = [];
   let insR10: InsuranceDetail[] = [];
+  let expenseHistory: ExpenseHistoryItem[] = [];
 
   // Currency State
   let exchangeData = {
@@ -61,7 +64,8 @@ export default async function Home() {
 
   try {
     // Parallel Fetching
-    const [fetchedAssets, fetchedRecurring, fetchedEvents, fetchedMap, fetchedR33, fetchedR34, fetchedR09, fetchedR10] = await Promise.all([
+    // Parallel Fetching
+    const [fetchedAssets, fetchedRecurring, fetchedEvents, fetchedMap, fetchedR33, fetchedR34, fetchedR09, fetchedR10, fetchedHistory] = await Promise.all([
       fetchAssets(),
       fetchRecurringItems(),
       fetchOneOffEvents(),
@@ -69,7 +73,8 @@ export default async function Home() {
       fetchDebtDetails('R33_Debt_Table'),
       fetchDebtDetails('R34_Debt_Table'),
       fetchInsuranceDetails('R09_Ins_Table'),
-      fetchInsuranceDetails('R10_Ins_Table')
+      fetchInsuranceDetails('R10_Ins_Table'),
+      fetchExpenseHistory()
     ]);
 
     assets = fetchedAssets;
@@ -80,6 +85,7 @@ export default async function Home() {
     debtR34 = fetchedR34;
     insR09 = fetchedR09;
     insR10 = fetchedR10;
+    expenseHistory = fetchedHistory;
 
     // Logic: Derive Rates from Assets
     // Find Fiat/Cash assets with Currency USD/JPY and get their Unit_Price (which is Exchange Rate to TWD)
@@ -344,6 +350,11 @@ export default async function Home() {
           </div>
         </div>
 
+        {/* 1.5 Budget Tracker (New Section) */}
+        <div className="w-full">
+          <BudgetTracker budgets={recurringItems} actuals={expenseHistory} />
+        </div>
+
         {/* 2. Main Visuals: Cash Flow & Expense */}
         {/* Grid adjusted to 2:1 ratio (col-span-2 vs col-span-1) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-[400px]">
@@ -358,11 +369,13 @@ export default async function Home() {
 
         {/* 2.5 Debt Dashboard (New Section) */}
         {/* Only show if data exists */}
-        {debtR33.length > 0 && (
-          <div className="w-full">
-            <DebtDashboard data={debtR33} r33Name={r33Name} />
-          </div>
-        )}
+        {
+          debtR33.length > 0 && (
+            <div className="w-full">
+              <DebtDashboard data={debtR33} r33Name={r33Name} />
+            </div>
+          )
+        }
 
         {/* 3. Asset Allocation & Heatmap */}
         {/* 3. Liquid Assets Detail (Unified Row) */}
@@ -473,11 +486,9 @@ export default async function Home() {
 
 
         {/* 5. Recurring Items Table (Bottom) */}
-        <div>
-          <RecurringTable items={recurringItems} categoryMap={categoryMap} />
-        </div>
+        <RecurringTable items={recurringItems} categoryMap={categoryMap} />
 
-      </main>
-    </div>
+      </main >
+    </div >
   );
 }
