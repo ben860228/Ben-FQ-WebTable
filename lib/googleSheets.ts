@@ -249,3 +249,156 @@ export async function fetchInsuranceDetails(tableId: string): Promise<InsuranceD
         };
     });
 }
+
+import { RawTransaction, ExpenseHistoryItem } from './types';
+
+// Headers for Raw Transactions
+// Headers for Raw Transactions
+const RAW_TX_HEADERS = [
+    'ID', 'YearMonth', 'MOZE_Source_Account', 'MOZE_Currency', 'MOZE_Type', 'MOZE_Category',
+    'MOZE_SubCategory', 'MOZE_Amount', 'MOZE_Fee', 'MOZE_Discount', 'MOZE_Name', 'MOZE_Merchant',
+    'MOZE_Date', 'MOZE_Time', 'MOZE_Project', 'MOZE_Description', 'MOZE_Tag', 'MOZE_Who',
+    'MOZE_Match_Status', 'Manual_Action', 'Action_Options', 'Action_Desc'
+];
+
+
+export async function updateRawTransactions(newRows: RawTransaction[], monthsToClear: string[]) {
+    const doc = await getDoc();
+    if (!doc) throw new Error("Google Doc not loaded");
+
+    // Refresh info to detect manual deletions
+    await doc.loadInfo();
+
+    let sheet = doc.sheetsByTitle['(SYS_AUTO)Raw_Transactions'];
+    if (!sheet) {
+        console.log("(SYS_AUTO)Raw_Transactions sheet not found, creating...");
+        sheet = await doc.addSheet({ title: '(SYS_AUTO)Raw_Transactions' });
+        await sheet.setHeaderRow(RAW_TX_HEADERS);
+    }
+
+    let allRows: any[] = [];
+    try {
+        allRows = await sheet.getRows();
+    } catch (error: any) {
+        if (error.message && error.message.includes('No values in the header row')) {
+            console.log("Empty sheet detected (no headers). Initializing headers...");
+            await sheet.setHeaderRow(RAW_TX_HEADERS);
+            allRows = []; // Treat as empty
+        } else {
+            throw error;
+        }
+    }
+
+    // Memory Filter: Keep rows that belong to months NOT in monthsToClear
+    // This is safer than deleteRow one-by-one which shifts indices
+    const keptRows = allRows
+        .filter(row => !monthsToClear.includes(row.get('YearMonth')))
+        .map(row => {
+            // Convert row object back to raw values for re-insertion
+            const rowObj: any = {};
+            RAW_TX_HEADERS.forEach(header => rowObj[header] = row.get(header));
+            return rowObj;
+        });
+
+    // Prepare final dataset: Kept Rows + New Rows
+    // We overwrite the entire sheet content for safety and consistency
+    const finalRows = [...keptRows, ...newRows];
+
+    // Clear and Write
+    await sheet.clear();
+    await sheet.setHeaderRow(RAW_TX_HEADERS);
+    if (finalRows.length > 0) {
+        await sheet.addRows(finalRows);
+    }
+}
+
+export async function fetchAllRawTransactions(): Promise<RawTransaction[]> {
+    const doc = await getDoc();
+    if (!doc) return [];
+
+    const sheet = doc.sheetsByTitle['(SYS_AUTO)Raw_Transactions'];
+    if (!sheet) return [];
+
+    let rows: any[] = [];
+    try {
+        rows = await sheet.getRows();
+    } catch (error: any) {
+        if (error.message && error.message.includes('No values in the header row')) {
+            console.warn("fetchAllRawTransactions: Sheet exists but has no headers/content.");
+            return [];
+        }
+        throw error;
+    }
+
+    return rows.map(row => ({
+        ID: row.get('ID'),
+        YearMonth: row.get('YearMonth'),
+        MOZE_Source_Account: row.get('MOZE_Source_Account'),
+        MOZE_Currency: row.get('MOZE_Currency'),
+        MOZE_Type: row.get('MOZE_Type'),
+        MOZE_Category: row.get('MOZE_Category'),
+        MOZE_SubCategory: row.get('MOZE_SubCategory'),
+        MOZE_Amount: parseNumber(row.get('MOZE_Amount')),
+        MOZE_Fee: parseNumber(row.get('MOZE_Fee')),
+        MOZE_Discount: parseNumber(row.get('MOZE_Discount')),
+        MOZE_Name: row.get('MOZE_Name'),
+        MOZE_Merchant: row.get('MOZE_Merchant'),
+        MOZE_Date: row.get('MOZE_Date'),
+        MOZE_Time: row.get('MOZE_Time'),
+        MOZE_Project: row.get('MOZE_Project'),
+        MOZE_Description: row.get('MOZE_Description'),
+        MOZE_Tag: row.get('MOZE_Tag'),
+        MOZE_Who: row.get('MOZE_Who'),
+        MOZE_Match_Status: row.get('MOZE_Match_Status') || '',
+        Manual_Action: row.get('Manual_Action') || ''
+    }));
+}
+
+export async function overwriteExpenseHistory(historyRows: ExpenseHistoryItem[]) {
+    const doc = await getDoc();
+    if (!doc) throw new Error("Google Doc not loaded");
+
+    // Refresh info to detect manual deletions
+    await doc.loadInfo();
+
+    let sheet = doc.sheetsByTitle['(SYS_AUTO)Actual_Expenses_History'];
+    if (!sheet) {
+        console.log("(SYS_AUTO)Actual_Expenses_History sheet not found, creating...");
+        sheet = await doc.addSheet({ title: '(SYS_AUTO)Actual_Expenses_History' });
+    }
+
+    const headers = ['YearMonth', 'Recurring_Item_ID', 'Name-Category', 'Actual_Amount', 'Note'];
+
+    // Clear everything
+    await sheet.clear();
+    await sheet.setHeaderRow(headers);
+
+    if (historyRows.length > 0) {
+        // Map object keys if they don't exactly match headers
+        const rowsToWrite = historyRows.map(item => ({
+            'YearMonth': item.YearMonth,
+            'Recurring_Item_ID': item.Recurring_Item_ID,
+            'Name-Category': item.Name_Category,
+            'Actual_Amount': item.Actual_Amount,
+            'Note': item.Note
+        }));
+        await sheet.addRows(rowsToWrite);
+    }
+}
+
+export async function fetchExpenseHistory(): Promise<ExpenseHistoryItem[]> {
+    const doc = await getDoc();
+    if (!doc) return [];
+
+    const sheet = doc.sheetsByTitle['(SYS_AUTO)Actual_Expenses_History'];
+    if (!sheet) return [];
+
+    const rows = await sheet.getRows();
+    return rows.map(row => ({
+        YearMonth: row.get('YearMonth'),
+        Recurring_Item_ID: row.get('Recurring_Item_ID'),
+        Name_Category: row.get('Name-Category'),
+        Actual_Amount: parseNumber(row.get('Actual_Amount')),
+        Note: row.get('Note')
+    }));
+}

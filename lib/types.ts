@@ -84,3 +84,36 @@ export interface AssetUpdate {
     category: string; // e.g., 'Bank', 'Stock'
     currency: string;
 }
+
+export interface RawTransaction {
+    ID: string;
+    YearMonth: string; // '2026-01'
+    MOZE_Source_Account: string;
+    MOZE_Currency: string;
+    MOZE_Type: string; // 'Expense', 'Income', 'Transfer'
+    MOZE_Category: string; // MOZE Main Category
+    MOZE_SubCategory: string;
+    MOZE_Amount: number;
+    MOZE_Fee: number;
+    MOZE_Discount: number;
+    MOZE_Name: string;
+    MOZE_Merchant: string;
+    MOZE_Date: string;
+    MOZE_Time: string;
+    MOZE_Project: string; // Maps to Budget Category
+    MOZE_Description: string;
+    MOZE_Tag: string;
+    MOZE_Who: string;
+    MOZE_Match_Status: string; // "Matched: Rxx" or "Waiting_Rules"
+    Manual_Action?: string; // "當作支出", "無視", "結案" etc.
+    Action_Options?: string;
+    Action_Desc?: string;
+}
+
+export interface ExpenseHistoryItem {
+    YearMonth: string;
+    Recurring_Item_ID: string; // New field
+    Name_Category: string; // 'Name-Category' in CSV
+    Actual_Amount: number; // Renamed from Total_Amount
+    Note: string; // Debug info
+}

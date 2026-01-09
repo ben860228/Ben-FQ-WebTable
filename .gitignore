@@ -42,3 +42,4 @@ next-env.d.ts
 
 # data
 *.csv
+MOZE_LOGIC_RULES.md
