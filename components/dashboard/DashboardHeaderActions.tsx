@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Bell, Settings, RefreshCw } from 'lucide-react';
+import { Bell, Settings, RefreshCw, SquarePen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import LiquidityUpdateDialog from './LiquidityUpdateDialog';
 import { Asset } from '@/lib/types';
@@ -25,10 +25,10 @@ export default function DashboardHeaderActions({ assets, rates, stockPrices }: D
             <div className="flex gap-4 items-center">
                 <button
                     onClick={() => setIsDialogOpen(true)}
-                    className="flex items-center gap-2 px-4 py-3 rounded-full bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-emerald-500/50 transition-colors"
+                    className="p-3 rounded-full bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-emerald-500/50 transition-colors"
+                    title="Update Assets"
                 >
-                    <RefreshCw className="h-5 w-5" />
-                    <span className="text-sm font-medium hidden sm:inline">Update Assets</span>
+                    <SquarePen className="h-5 w-5" />
                 </button>
 
                 <button className="p-3 rounded-full bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-emerald-500/50 transition-colors">

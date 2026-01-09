@@ -8,7 +8,7 @@
 這是整個儀表板的主頁面，擔任「資料彙整中心」的角色。
 -   **資料獲取**: 在 Server Component 端並行抓取 Google Sheets (資產、收支、債務) 與股市報價。
 -   **邏輯運算**: 呼叫 `lib/financial-logic.ts` 進行淨值加總、現金流預測。
--   **組件傳遞**: 將處理後的數據 (Props) 分發給底下的各個 Dashboard 組件 (如 `CashFlowChart`, `NetWorthCard`)。
+-   **組件傳遞**: 將處理後的數據 (Props) 分發給底下的各個 Dashboard 組件。**[Update]** 新增將 `oneOffEvents` 傳遞給 `RecurringTable` 以進行年度預測。
 
 ### `layout.tsx` (全域佈局)
 定義應用程式的骨架。

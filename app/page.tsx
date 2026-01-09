@@ -350,10 +350,8 @@ export default async function Home() {
           </div>
         </div>
 
-        {/* 1.5 Budget Tracker (New Section) */}
-        <div className="w-full">
-          <BudgetTracker budgets={recurringItems} actuals={expenseHistory} />
-        </div>
+        {/* 1.5 Budget Tracker (Moved below) */}
+
 
         {/* 2. Main Visuals: Cash Flow & Expense */}
         {/* Grid adjusted to 2:1 ratio (col-span-2 vs col-span-1) */}
@@ -365,6 +363,11 @@ export default async function Home() {
           <div className="lg:col-span-1 rounded-[2rem] h-[400px]">
             <ExpenseBreakdown items={recurringItems} categoryMap={categoryMap} />
           </div>
+        </div>
+
+        {/* 1.5 Budget Tracker (Yearly) */}
+        <div className="w-full">
+          <BudgetTracker budgets={recurringItems} actuals={expenseHistory} />
         </div>
 
         {/* 2.5 Debt Dashboard (New Section) */}
@@ -486,7 +489,7 @@ export default async function Home() {
 
 
         {/* 5. Recurring Items Table (Bottom) */}
-        <RecurringTable items={recurringItems} categoryMap={categoryMap} />
+        <RecurringTable items={recurringItems} oneOffEvents={oneOffEvents} categoryMap={categoryMap} />
 
       </main >
     </div >
